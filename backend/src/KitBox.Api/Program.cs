@@ -1,5 +1,8 @@
 ﻿using KitBox.Infrastructure;
 using KitBox.Domain;
+using FluentValidation;
+using KitBox.Api.Dtos;
+using KitBox.Api.Validators;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,9 +20,9 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// DI do projeto (apenas o que existe de fato)
-builder.Services.AddSingleton<IMongoContext, MongoContext>();
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
+// DI
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddScoped<IValidator<ProductInputDto>, ProductInputValidator>();
 
 var app = builder.Build();
 

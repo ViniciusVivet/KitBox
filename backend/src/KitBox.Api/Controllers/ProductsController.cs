@@ -1,12 +1,12 @@
-﻿using FluentValidation;
+﻿using KitBox.Domain;
 using KitBox.Api.Dtos;
-using KitBox.Domain;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace KitBox.Api.Controllers;
 
 [ApiController]
-[Route("/products")]
+[Route("[controller]")]
 public class ProductsController : ControllerBase
 {
     private readonly IProductRepository _repo;
@@ -19,71 +19,67 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? name = null, [FromQuery] string? category = null, CancellationToken ct = default)
+    public async Task<IActionResult> Search([FromQuery] string? name, [FromQuery] string? category, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, CancellationToken ct = default)
     {
-        page = Math.Max(page, 1);
-        pageSize = Math.Clamp(pageSize, 1, 100);
-
         var skip = (page - 1) * pageSize;
         var items = await _repo.SearchAsync(name, category, skip, pageSize, ct);
         var total = await _repo.CountAsync(ct);
 
-        Response.Headers["X-Total-Count"] = total.ToString();
         return Ok(new { total, page, pageSize, items });
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id, CancellationToken ct = default)
     {
-        var p = await _repo.GetByIdAsync(id, ct);
-        return p is null ? NotFound() : Ok(ToOutput(p));
+        var item = await _repo.GetByIdAsync(id, ct);
+        return item is null ? NotFound() : Ok(item);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] ProductInputDto input, CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] ProductInputDto dto, CancellationToken ct = default)
     {
-        var val = await _validator.ValidateAsync(input, ct);
-        if (!val.IsValid) return BadRequest(val.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
+        var result = await _validator.ValidateAsync(dto, ct);
+        if (!result.IsValid)
+            return BadRequest(result.Errors);
 
         var product = new Product
         {
-            Name = input.Name,
-            Description = input.Description,
-            Category = input.Category,
-            Price = input.Price,
-            Quantity = input.Quantity
+            Name = dto.Name,
+            Description = dto.Description,
+            Category = dto.Category,
+            Price = dto.Price,
+            Quantity = dto.Quantity
         };
 
-        var created = await _repo.CreateAsync(product, ct);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, ToOutput(created));
+        product = await _repo.CreateAsync(product, ct);
+        return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, [FromBody] ProductInputDto input, CancellationToken ct)
+    public async Task<IActionResult> Update(string id, [FromBody] ProductInputDto dto, CancellationToken ct = default)
     {
-        var val = await _validator.ValidateAsync(input, ct);
-        if (!val.IsValid) return BadRequest(val.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }));
+        var result = await _validator.ValidateAsync(dto, ct);
+        if (!result.IsValid)
+            return BadRequest(result.Errors);
 
-        var existing = await _repo.GetByIdAsync(id, ct);
-        if (existing is null) return NotFound();
+        var product = new Product
+        {
+            Id = id,
+            Name = dto.Name,
+            Description = dto.Description,
+            Category = dto.Category,
+            Price = dto.Price,
+            Quantity = dto.Quantity
+        };
 
-        existing.Name = input.Name;
-        existing.Description = input.Description;
-        existing.Category = input.Category;
-        existing.Price = input.Price;
-        existing.Quantity = input.Quantity;
-
-        var ok = await _repo.UpdateAsync(existing, ct);
-        return ok ? Ok(ToOutput(existing)) : StatusCode(500);
+        var ok = await _repo.UpdateAsync(product, ct);
+        return ok ? NoContent() : NotFound();
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(string id, CancellationToken ct)
+    public async Task<IActionResult> Delete(string id, CancellationToken ct = default)
     {
         var ok = await _repo.DeleteAsync(id, ct);
         return ok ? NoContent() : NotFound();
     }
-
-    private static ProductOutputDto ToOutput(Product p) =>
-        new(p.Id, p.Name, p.Description, p.Category, p.Price, p.Quantity, p.CreatedAtUtc);
 }
