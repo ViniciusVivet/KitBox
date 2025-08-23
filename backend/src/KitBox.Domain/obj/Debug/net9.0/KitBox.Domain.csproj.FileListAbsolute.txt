@@ -1,0 +1,12 @@
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\bin\Debug\net9.0\KitBox.Domain.deps.json
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\bin\Debug\net9.0\KitBox.Domain.dll
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\bin\Debug\net9.0\KitBox.Domain.pdb
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\KitBox.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\KitBox.Domain.AssemblyInfoInputs.cache
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\KitBox.Domain.AssemblyInfo.cs
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\KitBox.Domain.csproj.CoreCompileInputs.cache
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\KitBox.Domain.sourcelink.json
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\KitBox.Domain.dll
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\refint\KitBox.Domain.dll
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\KitBox.Domain.pdb
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Domain\obj\Debug\net9.0\ref\KitBox.Domain.dll

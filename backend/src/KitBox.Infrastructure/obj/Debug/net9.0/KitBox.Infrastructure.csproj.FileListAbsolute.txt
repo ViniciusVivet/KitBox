@@ -1,0 +1,16 @@
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.AssemblyInfo.cs
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.sourcelink.json
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\bin\Debug\net9.0\KitBox.Infrastructure.deps.json
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\bin\Debug\net9.0\KitBox.Infrastructure.dll
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\bin\Debug\net9.0\KitBox.Infrastructure.pdb
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\bin\Debug\net9.0\KitBox.Domain.dll
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\bin\Debug\net9.0\KitBox.Domain.pdb
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.I.A55C5C16.Up2Date
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.dll
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\refint\KitBox.Infrastructure.dll
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\KitBox.Infrastructure.pdb
+C:\Users\dougl\Documents\KitBox\backend\src\KitBox.Infrastructure\obj\Debug\net9.0\ref\KitBox.Infrastructure.dll
