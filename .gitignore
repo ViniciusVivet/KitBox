@@ -26,8 +26,8 @@ frontend/dist/
 
 # ==== Env ====
 .env
-.env.*
+.env.* 
 !.env.example
 
-# VS Code (opcional manter só configs compartilháveis)
+# VS Code
 .vscode/

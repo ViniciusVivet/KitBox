@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react"
+import { Toaster, toast } from "react-hot-toast"
 
 type Product = {
   id: string
@@ -18,6 +19,7 @@ type ValidationError = {
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:5238"
 
 export default function App() {
+  // lista/paginação/sort
   const [items, setItems] = useState<Product[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -26,17 +28,21 @@ export default function App() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [loading, setLoading] = useState(false)
 
+  // filtros
   const [name, setName] = useState("")
   const [category, setCategory] = useState("")
 
+  // formulário
   const empty = { name: "", description: "", category: "", price: 0, quantity: 0 }
   const [form, setForm] = useState({ ...empty })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // erros
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
+  // monta URL de listagem
   const listUrl = useMemo(() => {
     const u = new URL(API + "/products")
     u.searchParams.set("page", String(page))
@@ -58,11 +64,13 @@ export default function App() {
       setTotal(data.total ?? 0)
     } catch {
       setGlobalError("Falha ao carregar produtos.")
+      toast.error("Falha ao carregar produtos.")
     } finally {
       setLoading(false)
     }
   }
 
+  // Debounce dos filtros (400ms)
   const debounceRef = useRef<number | null>(null)
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current)
@@ -76,6 +84,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, category, sortBy, sortDir])
 
+  // Carrega inicial (sem esperar debounce)
   useEffect(() => {
     fetchList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,17 +125,21 @@ export default function App() {
             map[key].push(e.ErrorMessage)
           })
           setFieldErrors(map)
+          toast.error("Erros de validação.")
         } else {
           setGlobalError("Erro ao salvar. Tente novamente.")
+          toast.error("Erro ao salvar produto.")
         }
         return
       }
 
       setForm({ ...empty })
       setEditingId(null)
+      toast.success(editingId ? "Produto atualizado!" : "Produto criado!")
       fetchList()
     } catch {
       setGlobalError("Erro de rede ao salvar.")
+      toast.error("Erro de rede ao salvar.")
     } finally {
       setSaving(false)
     }
@@ -146,12 +159,22 @@ export default function App() {
 
   async function remove(id: string) {
     if (!confirm("Excluir este produto?")) return
-    await fetch(`${API}/products/${id}`, { method: "DELETE" })
-    fetchList()
+    try {
+      const res = await fetch(`${API}/products/${id}`, { method: "DELETE" })
+      if (res.ok) {
+        toast.success("Produto excluído!")
+        fetchList()
+      } else {
+        toast.error("Falha ao excluir.")
+      }
+    } catch {
+      toast.error("Erro de rede ao excluir.")
+    }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
+  // helpers de sort por coluna
   function toggleSort(by: typeof sortBy) {
     if (sortBy === by) {
       setSortDir(d => (d === "asc" ? "desc" : "asc"))
@@ -167,6 +190,7 @@ export default function App() {
 
   return (
     <div className="min-h-dvh bg-gray-50">
+      <Toaster position="top-right" />
       <div className="max-w-5xl mx-auto p-4 md:p-6">
         <header className="mb-4">
           <h1 className="text-2xl font-semibold">KitBox - Produtos</h1>
@@ -226,7 +250,7 @@ export default function App() {
             </div>
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            {loading ? "Carregando..." : `Total: ${total} item(s)`}
+            {loading ? "Carregando..." : `Total: ${total} item(ns)`}
           </p>
         </section>
 
@@ -269,7 +293,7 @@ export default function App() {
 
             <div className="md:col-span-2">
               <input
-                className="input w-full"
+                className={`input w-full ${fieldErrors.description ? "border-red-400" : ""}`}
                 placeholder="Descrição"
                 value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
@@ -330,7 +354,7 @@ export default function App() {
                   <ThButton active={sortBy === "category"} onClick={() => toggleSort("category")}>Categoria {sortIcon("category")}</ThButton>
                   <ThButton active={sortBy === "price"} onClick={() => toggleSort("price")}>Preço {sortIcon("price")}</ThButton>
                   <ThButton active={sortBy === "quantity"} onClick={() => toggleSort("quantity")}>Qtd {sortIcon("quantity")}</ThButton>
-                  <Th>Ações</Th>
+                  <Th> Ações </Th>
                 </tr>
               </thead>
               <tbody>
@@ -362,6 +386,7 @@ export default function App() {
             </table>
           </div>
 
+          {/* paginação */}
           <div className="flex gap-2 items-center mt-3">
             <button className="btn-alt" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</button>
             <span className="text-sm">Página {page} de {totalPages}</span>
@@ -403,6 +428,7 @@ function FieldErrors({ errors }: { errors?: string[] }) {
   )
 }
 
+/** Mapeia nomes do FluentValidation -> chaves do nosso form */
 function normalizeProp(prop: string) {
   const p = prop.toLowerCase()
   if (p.includes("name")) return "name"
