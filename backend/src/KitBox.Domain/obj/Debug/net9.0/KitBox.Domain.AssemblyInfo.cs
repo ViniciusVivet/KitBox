@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KitBox.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5de9327d1487ef12c007f83841a0c31cacc73c73")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+39f04a696f15d158ad17c8c60a3237830a930e5c")]
 [assembly: System.Reflection.AssemblyProductAttribute("KitBox.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KitBox.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
