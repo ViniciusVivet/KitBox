@@ -1,5 +1,12 @@
 ﻿import { useEffect, useMemo, useRef, useState } from "react"
 import { Toaster, toast } from "react-hot-toast"
+import { Navbar, Button, Badge } from "flowbite-react"
+import {
+  MagnifyingGlassIcon,
+  ShoppingCartIcon,
+  HeartIcon,
+  UserIcon
+} from "@heroicons/react/24/outline"
 
 type Product = {
   id: string
@@ -11,28 +18,26 @@ type Product = {
   createdAtUtc: string
 }
 
-type ValidationError = {
-  PropertyName: string
-  ErrorMessage: string
-}
+type ValidationError = { PropertyName: string; ErrorMessage: string }
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:5238"
 
 export default function App() {
-  // lista/paginação/sort
+  // listagem / paginação / ordenação
   const [items, setItems] = useState<Product[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const pageSize = 10
-  const [sortBy, setSortBy] = useState<"name" | "category" | "price" | "quantity" | "createdAtUtc">("name")
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
+  const pageSize = 12
+  const [sortBy, setSortBy] =
+    useState<"name" | "category" | "price" | "quantity" | "createdAtUtc">("createdAtUtc")
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc")
   const [loading, setLoading] = useState(false)
 
   // filtros
   const [name, setName] = useState("")
   const [category, setCategory] = useState("")
 
-  // formulário
+  // form (CRUD inline simples)
   const empty = { name: "", description: "", category: "", price: 0, quantity: 0 }
   const [form, setForm] = useState({ ...empty })
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -64,31 +69,24 @@ export default function App() {
       setTotal(data.total ?? 0)
     } catch {
       setGlobalError("Falha ao carregar produtos.")
-      toast.error("Falha ao carregar produtos.")
     } finally {
       setLoading(false)
     }
   }
 
-  // Debounce dos filtros (400ms)
+  // debounce filtros
   const debounceRef = useRef<number | null>(null)
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current)
     debounceRef.current = window.setTimeout(() => {
       setPage(1)
       fetchList()
-    }, 400)
-    return () => {
-      if (debounceRef.current) window.clearTimeout(debounceRef.current)
-    }
+    }, 350)
+    return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, category, sortBy, sortDir])
 
-  // Carrega inicial (sem esperar debounce)
-  useEffect(() => {
-    fetchList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  useEffect(() => { fetchList() }, []) // initial
 
   function clearErrorsFor(field: keyof typeof form) {
     if (fieldErrors[field]) {
@@ -125,7 +123,7 @@ export default function App() {
             map[key].push(e.ErrorMessage)
           })
           setFieldErrors(map)
-          toast.error("Erros de validação.")
+          toast.error("Revise os campos destacados.")
         } else {
           setGlobalError("Erro ao salvar. Tente novamente.")
           toast.error("Erro ao salvar produto.")
@@ -139,7 +137,7 @@ export default function App() {
       fetchList()
     } catch {
       setGlobalError("Erro de rede ao salvar.")
-      toast.error("Erro de rede ao salvar.")
+      toast.error("Erro de rede.")
     } finally {
       setSaving(false)
     }
@@ -159,106 +157,164 @@ export default function App() {
 
   async function remove(id: string) {
     if (!confirm("Excluir este produto?")) return
-    try {
-      const res = await fetch(`${API}/products/${id}`, { method: "DELETE" })
-      if (res.ok) {
-        toast.success("Produto excluído!")
-        fetchList()
-      } else {
-        toast.error("Falha ao excluir.")
-      }
-    } catch {
-      toast.error("Erro de rede ao excluir.")
+    const res = await fetch(`${API}/products/${id}`, { method: "DELETE" })
+    if (res.ok) {
+      toast.success("Produto excluído.")
+      fetchList()
+    } else {
+      toast.error("Falha ao excluir.")
     }
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-
-  // helpers de sort por coluna
   function toggleSort(by: typeof sortBy) {
-    if (sortBy === by) {
-      setSortDir(d => (d === "asc" ? "desc" : "asc"))
-    } else {
-      setSortBy(by)
-      setSortDir("asc")
-    }
-  }
-  function sortIcon(by: typeof sortBy) {
-    if (sortBy !== by) return "↕"
-    return sortDir === "asc" ? "↑" : "↓"
+    if (sortBy === by) setSortDir(d => (d === "asc" ? "desc" : "asc"))
+    else { setSortBy(by); setSortDir("asc") }
   }
 
+  // imagem “fake” bonita só pra ter cara de marketplace
+  const imageFor = (p: Product) =>
+    `https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?q=80&w=800&auto=format&fit=crop&ixlib=rb-4.0.3&mark=${encodeURIComponent(p.category)}`
+  
   return (
     <div className="min-h-dvh bg-gray-50">
       <Toaster position="top-right" />
-      <div className="max-w-5xl mx-auto p-4 md:p-6">
-        <header className="mb-4">
-          <h1 className="text-2xl font-semibold">KitBox - Produtos</h1>
-          <p className="text-sm text-gray-500">API: {API}</p>
-        </header>
 
-        {/* filtros */}
-        <section className="card mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      {/* NAVBAR */}
+      <Navbar fluid rounded className="border-b">
+        <Navbar.Brand href="#">
+          <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-brand-500 to-neon mr-2" />
+          <span className="self-center whitespace-nowrap text-xl font-semibold">
+            KitBox
+          </span>
+        </Navbar.Brand>
+
+        <div className="flex-1 px-4">
+          <div className="relative">
+            <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-2.5 text-gray-400" />
             <input
-              className="input"
-              placeholder="Buscar por nome"
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-300 outline-none focus:ring-2 focus:ring-brand-400"
+              placeholder="Buscar produtos, marcas e mais…"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
             />
-            <input
-              className="input"
-              placeholder="Categoria"
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-            />
-            <select
-              className="input"
-              value={`${sortBy}:${sortDir}`}
-              onChange={e => {
-                const [by, dir] = e.target.value.split(":") as [typeof sortBy, typeof sortDir]
-                setSortBy(by)
-                setSortDir(dir)
-              }}
-            >
-              <option value="name:asc">Nome ↑</option>
-              <option value="name:desc">Nome ↓</option>
-              <option value="category:asc">Categoria ↑</option>
-              <option value="category:desc">Categoria ↓</option>
-              <option value="price:asc">Preço ↑</option>
-              <option value="price:desc">Preço ↓</option>
-              <option value="quantity:asc">Qtd ↑</option>
-              <option value="quantity:desc">Qtd ↓</option>
-              <option value="createdAtUtc:desc">Mais recente</option>
-              <option value="createdAtUtc:asc">Mais antigo</option>
-            </select>
-            <div className="flex gap-2">
-              <button
-                className="btn w-full md:w-auto"
-                onClick={() => { setPage(1); fetchList() }}
-              >
-                Atualizar
-              </button>
-              {(name || category) && (
+          </div>
+        </div>
+
+        <div className="flex gap-2 items-center">
+          <Button color="light"><HeartIcon className="h-5 w-5" /></Button>
+          <Button color="light" className="relative">
+            <ShoppingCartIcon className="h-5 w-5" />
+            <Badge color="info" className="absolute -top-2 -right-2">0</Badge>
+          </Button>
+          <Button color="light"><UserIcon className="h-5 w-5" /></Button>
+        </div>
+      </Navbar>
+
+      {/* HERO */}
+      <section className="bg-hero-gradient">
+        <div className="max-w-6xl mx-auto px-4 py-10">
+          <div className="rounded-3xl bg-white/70 backdrop-blur border p-6 md:p-10 shadow">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+              Encontre o acessório perfeito com <span className="text-brand-600">um clique</span>.
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Colares, pulseiras, anéis e mais — organizado e rápido.
+            </p>
+
+            {/* filtros rápidos */}
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["acessorios", "Ice", "ouro", "prata"].map(c => (
                 <button
-                  className="btn-alt w-full md:w-auto"
-                  onClick={() => { setName(""); setCategory(""); setPage(1) }}
+                  key={c}
+                  className={"px-3 py-1.5 rounded-full text-sm border " +
+                    (category === c ? "bg-brand-600 text-white border-brand-600"
+                                    : "bg-white hover:bg-gray-50")}
+                  onClick={() => setCategory(category === c ? "" : c)}
                 >
-                  Limpar
+                  {c}
+                </button>
+              ))}
+              {category && (
+                <button className="px-3 py-1.5 rounded-full text-sm border bg-white" onClick={() => setCategory("")}>
+                  Limpar categoria
                 </button>
               )}
             </div>
           </div>
-          <p className="mt-2 text-xs text-gray-500">
-            {loading ? "Carregando..." : `Total: ${total} item(ns)`}
-          </p>
-        </section>
+        </div>
+      </section>
 
-        {/* form */}
-        <section className="card mb-4">
-          <h2 className="text-lg font-medium mb-2">
-            {editingId ? "Editar produto" : "Novo produto"}
-          </h2>
+      {/* LISTA + CONTROLES */}
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+          <p className="text-sm text-gray-600">
+            {loading ? "Carregando…" : `${total} produto(s) encontrados`}
+          </p>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-sm text-gray-600">Ordenar:</span>
+            <select
+              className="input border-gray-300 rounded-lg px-3 py-2"
+              value={`${sortBy}:${sortDir}`}
+              onChange={(e) => {
+                const [by, dir] = e.target.value.split(":") as [typeof sortBy, typeof sortDir]
+                setSortBy(by); setSortDir(dir)
+              }}
+            >
+              <option value="createdAtUtc:desc">Mais recentes</option>
+              <option value="name:asc">Nome ↑</option>
+              <option value="name:desc">Nome ↓</option>
+              <option value="price:asc">Preço ↑</option>
+              <option value="price:desc">Preço ↓</option>
+              <option value="quantity:desc">Estoque ↓</option>
+            </select>
+            <Button color="light" onClick={() => { setPage(1); fetchList() }}>Atualizar</Button>
+          </div>
+        </div>
+
+        {/* GRID */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {items.map(p => (
+            <article key={p.id} className="bg-white rounded-2xl border overflow-hidden shadow-sm hover:shadow-md transition">
+              <div className="aspect-[4/3] bg-gray-100">
+                <img
+                  src={imageFor(p)}
+                  alt={p.name}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-medium line-clamp-2">{p.name}</h3>
+                  <span className="text-brand-700 font-semibold">
+                    {p.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">{p.category}</p>
+
+                <div className="mt-3 flex gap-2">
+                  <Button className="flex-1" onClick={() => toast.success("Adicionado ao carrinho!")}>
+                    Comprar
+                  </Button>
+                  <Button color="light" onClick={() => startEdit(p)}>Editar</Button>
+                  <Button color="failure" onClick={() => remove(p.id)}>Excluir</Button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {/* paginação */}
+        <div className="flex gap-2 items-center mt-6 justify-center">
+          <Button color="light" disabled={page<=1} onClick={()=>setPage(p => Math.max(1, p-1))}>Anterior</Button>
+          <span className="text-sm">Página {page} de {Math.max(1, Math.ceil(total / pageSize))}</span>
+          <Button color="light" disabled={page>=Math.ceil(total/pageSize)} onClick={()=>setPage(p => p+1)}>Próxima</Button>
+        </div>
+
+        {/* GERENCIAR (form) */}
+        <section className="mt-10">
+          <h2 className="text-lg font-semibold mb-3">Admin rápido</h2>
 
           {globalError && (
             <div className="mb-3 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -266,10 +322,10 @@ export default function App() {
             </div>
           )}
 
-          <form onSubmit={submitForm} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <form onSubmit={submitForm} className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-4 border rounded-2xl">
             <div>
               <input
-                className={`input w-full ${fieldErrors.name ? "border-red-400" : ""}`}
+                className={`w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 ${fieldErrors.name ? "border-red-400" : "border-gray-300"}`}
                 placeholder="Nome *"
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
@@ -281,7 +337,7 @@ export default function App() {
 
             <div>
               <input
-                className={`input w-full ${fieldErrors.category ? "border-red-400" : ""}`}
+                className={`w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 ${fieldErrors.category ? "border-red-400" : "border-gray-300"}`}
                 placeholder="Categoria *"
                 value={form.category}
                 onChange={e => setForm({ ...form, category: e.target.value })}
@@ -293,7 +349,7 @@ export default function App() {
 
             <div className="md:col-span-2">
               <input
-                className={`input w-full ${fieldErrors.description ? "border-red-400" : ""}`}
+                className={`w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 ${fieldErrors.description ? "border-red-400" : "border-gray-300"}`}
                 placeholder="Descrição"
                 value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
@@ -306,7 +362,7 @@ export default function App() {
               <input
                 type="number"
                 step="0.01"
-                className={`input w-full ${fieldErrors.price ? "border-red-400" : ""}`}
+                className={`w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 ${fieldErrors.price ? "border-red-400" : "border-gray-300"}`}
                 placeholder="Preço"
                 value={Number.isFinite(form.price) ? form.price : 0}
                 onChange={e => setForm({ ...form, price: Number(e.target.value) })}
@@ -318,7 +374,7 @@ export default function App() {
             <div>
               <input
                 type="number"
-                className={`input w-full ${fieldErrors.quantity ? "border-red-400" : ""}`}
+                className={`w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 ${fieldErrors.quantity ? "border-red-400" : "border-gray-300"}`}
                 placeholder="Quantidade"
                 value={Number.isFinite(form.quantity) ? form.quantity : 0}
                 onChange={e => setForm({ ...form, quantity: Number(e.target.value) })}
@@ -328,95 +384,26 @@ export default function App() {
             </div>
 
             <div className="flex gap-2 mt-1">
-              <button type="submit" className="btn" disabled={saving}>
-                {saving ? (editingId ? "Salvando..." : "Adicionando...") : (editingId ? "Salvar alterações" : "Adicionar")}
-              </button>
+              <Button type="submit" isProcessing={saving}>
+                {editingId ? "Salvar alterações" : "Adicionar"}
+              </Button>
               {editingId && (
-                <button
+                <Button
+                  color="light"
                   type="button"
-                  className="btn-alt"
                   onClick={() => { setEditingId(null); setForm({ ...empty }); setFieldErrors({}); setGlobalError(null) }}
                 >
                   Cancelar
-                </button>
+                </Button>
               )}
             </div>
           </form>
         </section>
-
-        {/* tabela */}
-        <section className="card">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left bg-gray-50">
-                  <ThButton active={sortBy === "name"} onClick={() => toggleSort("name")}>Nome {sortIcon("name")}</ThButton>
-                  <ThButton active={sortBy === "category"} onClick={() => toggleSort("category")}>Categoria {sortIcon("category")}</ThButton>
-                  <ThButton active={sortBy === "price"} onClick={() => toggleSort("price")}>Preço {sortIcon("price")}</ThButton>
-                  <ThButton active={sortBy === "quantity"} onClick={() => toggleSort("quantity")}>Qtd {sortIcon("quantity")}</ThButton>
-                  <Th> Ações </Th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={5} className="p-3 text-gray-500">Carregando...</td>
-                  </tr>
-                )}
-                {!loading && items.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-3 text-gray-500">Sem produtos.</td>
-                  </tr>
-                )}
-                {!loading && items.map(p => (
-                  <tr key={p.id} className="border-t">
-                    <Td>{p.name}</Td>
-                    <Td>{p.category}</Td>
-                    <Td>{p.price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</Td>
-                    <Td>{p.quantity}</Td>
-                    <Td>
-                      <div className="flex gap-2">
-                        <button className="btn-alt" onClick={() => startEdit(p)}>Editar</button>
-                        <button className="btn-alt" onClick={() => remove(p.id)}>Excluir</button>
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* paginação */}
-          <div className="flex gap-2 items-center mt-3">
-            <button className="btn-alt" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Anterior</button>
-            <span className="text-sm">Página {page} de {totalPages}</span>
-            <button className="btn-alt" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Próxima</button>
-          </div>
-        </section>
-      </div>
+      </main>
     </div>
   )
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="px-3 py-2 border-b border-gray-200">{children}</th>
-}
-function ThButton({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
-  return (
-    <th className="px-3 py-2 border-b border-gray-200">
-      <button
-        type="button"
-        className={"text-left " + (active ? "underline underline-offset-4" : "")}
-        onClick={onClick}
-      >
-        {children}
-      </button>
-    </th>
-  )
-}
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="px-3 py-2">{children}</td>
-}
 function FieldErrors({ errors }: { errors?: string[] }) {
   if (!errors || errors.length === 0) return null
   return (
@@ -428,7 +415,6 @@ function FieldErrors({ errors }: { errors?: string[] }) {
   )
 }
 
-/** Mapeia nomes do FluentValidation -> chaves do nosso form */
 function normalizeProp(prop: string) {
   const p = prop.toLowerCase()
   if (p.includes("name")) return "name"
