@@ -19,11 +19,36 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> Search([FromQuery] string? name, [FromQuery] string? category, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, CancellationToken ct = default)
+    public async Task<IActionResult> Search(
+        [FromQuery] string? name,
+        [FromQuery] string? category,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? sortBy = "name",
+        [FromQuery] string? sortDir = "asc",
+        CancellationToken ct = default)
     {
+        if (page <= 0) page = 1;
+        if (pageSize <= 0) pageSize = 10;
+
+        sortBy = (sortBy ?? "name").ToLowerInvariant();
+        sortDir = (sortDir ?? "asc").ToLowerInvariant();
+
+        var allowedBy = new HashSet<string> { "name", "category", "price", "quantity", "createdatutc" };
+        if (!allowedBy.Contains(sortBy)) sortBy = "name";
+        if (sortDir != "asc" && sortDir != "desc") sortDir = "asc";
+
         var skip = (page - 1) * pageSize;
-        var items = await _repo.SearchAsync(name, category, skip, pageSize, ct);
-        var total = await _repo.CountAsync(ct);
+
+        var (itemsTask, totalTask) = (
+            _repo.SearchAsync(name, category, skip, pageSize, sortBy, sortDir, ct),
+            _repo.CountAsync(name, category, ct)
+        );
+
+        await Task.WhenAll(itemsTask, totalTask);
+
+        var items = itemsTask.Result;
+        var total = totalTask.Result;
 
         return Ok(new { total, page, pageSize, items });
     }

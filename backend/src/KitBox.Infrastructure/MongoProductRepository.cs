@@ -10,23 +10,19 @@ public class MongoProductRepository : IProductRepository
 
     public MongoProductRepository(IMongoDatabase db)
     {
-        // coleção: products – indexarei name e category
         _collection = db.GetCollection<Product>("products");
 
-        // Garantir índices básicos (idempotente)
         try
         {
             var models = new List<CreateIndexModel<Product>>
             {
                 new(Builders<Product>.IndexKeys.Ascending(p => p.Name)),
-                new(Builders<Product>.IndexKeys.Ascending(p => p.Category))
+                new(Builders<Product>.IndexKeys.Ascending(p => p.Category)),
+                new(Builders<Product>.IndexKeys.Ascending(p => p.CreatedAtUtc))
             };
             _collection.Indexes.CreateMany(models);
         }
-        catch
-        {
-            // evitar quebrar build/exec se indexação falhar em dev
-        }
+        catch { }
     }
 
     public async Task<Product?> GetByIdAsync(string id, CancellationToken ct = default)
@@ -35,26 +31,49 @@ public class MongoProductRepository : IProductRepository
         return await _collection.Find(filter).FirstOrDefaultAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Product>> SearchAsync(string? name = null, string? category = null, int skip = 0, int take = 20, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Product>> SearchAsync(
+        string? name = null,
+        string? category = null,
+        int skip = 0,
+        int take = 20,
+        string sortBy = "name",
+        string sortDir = "asc",
+        CancellationToken ct = default)
     {
-        var filter = Builders<Product>.Filter.Empty;
+        var filter = BuildFilter(name, category);
 
-        if (!string.IsNullOrWhiteSpace(name))
-            filter &= Builders<Product>.Filter.Regex(p => p.Name, new BsonRegularExpression(name, "i"));
+        var find = _collection.Find(filter);
 
-        if (!string.IsNullOrWhiteSpace(category))
-            filter &= Builders<Product>.Filter.Eq(p => p.Category, category);
+        // normaliza
+        sortBy = (sortBy ?? "name").ToLowerInvariant();
+        sortDir = (sortDir ?? "asc").ToLowerInvariant();
+        var desc = sortDir == "desc";
 
-        return await _collection.Find(filter).Skip(skip).Limit(take).ToListAsync(ct);
+        // aplica ordenação
+        find = sortBy switch
+        {
+            "category"     => desc ? find.SortByDescending(p => p.Category)     : find.SortBy(p => p.Category),
+            "price"        => desc ? find.SortByDescending(p => p.Price)        : find.SortBy(p => p.Price),
+            "quantity"     => desc ? find.SortByDescending(p => p.Quantity)     : find.SortBy(p => p.Quantity),
+            "createdatutc" => desc ? find.SortByDescending(p => p.CreatedAtUtc) : find.SortBy(p => p.CreatedAtUtc),
+            _              => desc ? find.SortByDescending(p => p.Name)         : find.SortBy(p => p.Name),
+        };
+
+        return await find.Skip(skip).Limit(take).ToListAsync(ct);
+    }
+
+    public async Task<long> CountAsync(string? name = null, string? category = null, CancellationToken ct = default)
+    {
+        var filter = BuildFilter(name, category);
+        return await _collection.CountDocumentsAsync(filter, cancellationToken: ct);
     }
 
     public async Task<Product> CreateAsync(Product product, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(product.Id))
-            product.Id = ObjectId.GenerateNewId().ToString();
+            product.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
 
         product.CreatedAtUtc = DateTime.UtcNow;
-
         await _collection.InsertOneAsync(product, cancellationToken: ct);
         return product;
     }
@@ -73,6 +92,16 @@ public class MongoProductRepository : IProductRepository
         return result.IsAcknowledged && result.DeletedCount > 0;
     }
 
-    public async Task<long> CountAsync(CancellationToken ct = default)
-        => await _collection.CountDocumentsAsync(Builders<Product>.Filter.Empty, cancellationToken: ct);
+    private static FilterDefinition<Product> BuildFilter(string? name, string? category)
+    {
+        var filter = Builders<Product>.Filter.Empty;
+
+        if (!string.IsNullOrWhiteSpace(name))
+            filter &= Builders<Product>.Filter.Regex(p => p.Name, new BsonRegularExpression(name, "i"));
+
+        if (!string.IsNullOrWhiteSpace(category))
+            filter &= Builders<Product>.Filter.Eq(p => p.Category, category);
+
+        return filter;
+    }
 }
