@@ -9,57 +9,116 @@ public class InMemoryProductRepository : IProductRepository
 
     static InMemoryProductRepository()
     {
-        // Seed leve (só se vazio)
         if (_db.IsEmpty)
         {
             var seed = new[]
             {
-                new Product { Name="Colar Minimalista de Prata", Description="Prata 925", Price=129.90m, Stock=20 },
-                new Product { Name="Pulseira Couro Preto", Description="Couro legítimo", Price=89.90m, Stock=15 },
-                new Product { Name="Anel Solitário Dourado", Description="Folheado a ouro 18k", Price=159.90m, Stock=25 },
-                new Product { Name="Brinco Argola Aço", Description="Aço inox", Price=49.90m, Stock=30 },
-                new Product { Name="Relógio Digital Sport", Description="Cronômetro e iluminação", Price=299.90m, Stock=12 },
+                new Product { Id = Guid.NewGuid().ToString("N"), Name="Colar Minimalista de Prata", Description="Prata 925",              Category="Colares",  Price=129.90m, Quantity=20, CreatedAtUtc=DateTime.UtcNow },
+                new Product { Id = Guid.NewGuid().ToString("N"), Name="Pulseira Couro Preto",         Description="Couro legítimo",       Category="Pulseiras",Price= 89.90m, Quantity=15, CreatedAtUtc=DateTime.UtcNow },
+                new Product { Id = Guid.NewGuid().ToString("N"), Name="Anel Solitário Dourado",       Description="Folheado a ouro 18k",  Category="Anéis",    Price=159.90m, Quantity=25, CreatedAtUtc=DateTime.UtcNow },
+                new Product { Id = Guid.NewGuid().ToString("N"), Name="Brinco Argola Aço",            Description="Aço inox",             Category="Brincos",  Price= 49.90m, Quantity=30, CreatedAtUtc=DateTime.UtcNow },
+                new Product { Id = Guid.NewGuid().ToString("N"), Name="Relógio Digital Sport",        Description="Cronômetro, iluminação",Category="Relógios",Price=299.90m, Quantity=12, CreatedAtUtc=DateTime.UtcNow },
             };
             foreach (var p in seed) _db[p.Id] = p;
         }
     }
 
-    public Task<PagedResult<Product>> GetPagedAsync(int page, int pageSize)
+    public Task<IReadOnlyList<Product>> SearchAsync(
+        string? name, string? category, int skip, int take, string sortBy, string sortDir, CancellationToken ct = default)
     {
-        if (page < 1) page = 1;
-        if (pageSize <= 0) pageSize = 10;
+        var q = _db.Values.AsQueryable();
 
-        var all = _db.Values.OrderBy(p => p.Name).ToList();
-        var total = all.Count;
-        var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
-        return Task.FromResult(new PagedResult<Product>(items, total, page, pageSize));
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            var n = name.Trim().ToLowerInvariant();
+            q = q.Where(p =>
+                (p.Name ?? string.Empty).ToLower().Contains(n) ||
+                (p.Description ?? string.Empty).ToLower().Contains(n));
+        }
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            var c = category.Trim().ToLowerInvariant();
+            q = q.Where(p => (p.Category ?? string.Empty).ToLower().Contains(c));
+        }
+
+        q = ApplySort(q, sortBy, sortDir);
+
+        if (skip < 0) skip = 0;
+        if (take <= 0) take = 10;
+
+        var items = q.Skip(skip).Take(take).ToList();
+        return Task.FromResult((IReadOnlyList<Product>)items);
     }
 
-    public Task<Product?> GetByIdAsync(string id)
+    public Task<long> CountAsync(string? name, string? category, CancellationToken ct = default)
+    {
+        var q = _db.Values.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            var n = name.Trim().ToLowerInvariant();
+            q = q.Where(p =>
+                (p.Name ?? string.Empty).ToLower().Contains(n) ||
+                (p.Description ?? string.Empty).ToLower().Contains(n));
+        }
+
+        if (!string.IsNullOrWhiteSpace(category))
+        {
+            var c = category.Trim().ToLowerInvariant();
+            q = q.Where(p => (p.Category ?? string.Empty).ToLower().Contains(c));
+        }
+
+        return Task.FromResult((long)q.Count());
+    }
+
+    public Task<Product?> GetByIdAsync(string id, CancellationToken ct = default)
     {
         _db.TryGetValue(id, out var p);
         return Task.FromResult(p);
     }
 
-    public Task<Product> CreateAsync(Product p)
+    public Task<Product> CreateAsync(Product p, CancellationToken ct = default)
     {
-        // Garante Id
         if (string.IsNullOrWhiteSpace(p.Id))
             p.Id = Guid.NewGuid().ToString("N");
+        if (p.CreatedAtUtc == default)
+            p.CreatedAtUtc = DateTime.UtcNow;
+
         _db[p.Id] = p;
         return Task.FromResult(p);
     }
 
-    public Task<bool> UpdateAsync(string id, Product update)
+    public Task<bool> UpdateAsync(Product p, CancellationToken ct = default)
     {
-        if (!_db.ContainsKey(id)) return Task.FromResult(false);
-        update.Id = id;
-        _db[id] = update;
+        if (string.IsNullOrWhiteSpace(p.Id) || !_db.ContainsKey(p.Id))
+            return Task.FromResult(false);
+
+        var existing = _db[p.Id];
+        existing.Name        = p.Name;
+        existing.Description = p.Description;
+        existing.Category    = p.Category;
+        existing.Price       = p.Price;
+        existing.Quantity    = p.Quantity;
+        _db[p.Id] = existing;
+
         return Task.FromResult(true);
     }
 
-    public Task<bool> DeleteAsync(string id)
+    public Task<bool> DeleteAsync(string id, CancellationToken ct = default)
+        => Task.FromResult(_db.TryRemove(id, out _));
+
+    private static IQueryable<Product> ApplySort(IQueryable<Product> q, string? sortBy, string? sortDir)
     {
-        return Task.FromResult(_db.TryRemove(id, out _));
+        var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+        switch ((sortBy ?? "name").ToLowerInvariant())
+        {
+            case "name":         return desc ? q.OrderByDescending(p => p.Name)         : q.OrderBy(p => p.Name);
+            case "category":     return desc ? q.OrderByDescending(p => p.Category)     : q.OrderBy(p => p.Category);
+            case "price":        return desc ? q.OrderByDescending(p => p.Price)        : q.OrderBy(p => p.Price);
+            case "quantity":     return desc ? q.OrderByDescending(p => p.Quantity)     : q.OrderBy(p => p.Quantity);
+            case "createdatutc": return desc ? q.OrderByDescending(p => p.CreatedAtUtc) : q.OrderBy(p => p.CreatedAtUtc);
+            default:             return desc ? q.OrderByDescending(p => p.Name)         : q.OrderBy(p => p.Name);
+        }
     }
 }
