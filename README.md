@@ -1,69 +1,87 @@
-# KitBox
+# KitBox — Desafio Técnico (E-commerce)
+**Autor:** Douglas Vinicius Alves da Silva
 
-Este projeto é o **MVP da KitBox**, desenvolvido para o teste técnico.  
-A ideia é simples: um CRUD completo de produtos, com backend em **.NET + MongoDB** e frontend em **React + Vite**.
+Projeto full-stack de e-commerce minimalista criado para um teste técnico.  
+Stack utilizada: **.NET 9 (Web API) + MongoDB + Next.js 15 + Tailwind + JWT + FluentValidation + Swagger**.
 
----
-
-## 🚀 Tecnologias
-
-- **Backend**
-  - .NET 9 (Web API)
-  - MongoDB (rodando via Docker)
-  - FluentValidation
-  - Swagger
-
-- **Frontend**
-  - React + TypeScript
-  - Vite
-  - Fetch API
+> Desenvolvido em 6 dias como desafio técnico, demonstrando domínio prático em backend, frontend e integração com banco de dados real.
 
 ---
 
-## ⚙️ Funcionalidades
+## 🚀 Como rodar localmente
 
-- Criar produto
-- Listar produtos (com paginação e filtros por nome/categoria)
-- Editar produto
-- Excluir produto
-- Integração total frontend ↔ backend
+### 1) Pré-requisitos
+- Docker Desktop (recomendado) **ou** MongoDB local
+- .NET SDK 9
+- Node.js 20 (LTS) + npm
 
----
+### 2) Subir MongoDB (Docker)
+```powershell
+docker run -d --name kitbox-mongo -p 27017:27017 -v kitbox_mongo_data:/data/db mongo:6
+# (Opcional) Painel: Mongo Express (sem login)
+docker run -d --name kitbox-mongo-express --link kitbox-mongo:mongo -p 8081:8081 -e ME_CONFIG_MONGODB_SERVER=kitbox-mongo -e ME_CONFIG_BASICAUTH=false mongo-express:1.0.2-20
+```
 
-## 📦 Como rodar
-
-### 1) Clonar o repositório
-```bash
-
-2) Subir o MongoDB (Docker)
-docker run -d --name mongo -p 27017:27017 mongo
-
-3) Rodar o backend
+### 3) Backend (.NET API)
+```powershell
 cd backend/src/KitBox.Api
+copy appsettings.Development.json.example appsettings.Development.json
 dotnet run
+# Swagger: http://localhost:5238/swagger
+# Health:  http://localhost:5238/health
+```
 
-A API ficará disponível em: http://localhost:5238/swagger
-
-4) Rodar o frontend
+### 4) Frontend (Next.js)
+```powershell
 cd frontend
+copy .env.example .env.local
+# evitar ERESOLVE de peers:
+echo legacy-peer-deps=true> .npmrc
 npm install
 npm run dev
+# http://localhost:3000
+```
 
-O app ficará em: http://localhost:5173
+---
 
-🔑 Variáveis de ambiente
+## 🧭 Endpoints principais (API)
+- `GET /health`
+- `GET /products` — filtros: `?name=&category=&page=1&pageSize=12&sortBy=name|price|quantity|createdAtUtc&sortDir=asc|desc`
+- `GET /products/{id}`
+- `POST /products`
+- `PUT /products/{id}`
+- `DELETE /products/{id}`
+- `POST /auth/register`, `POST /auth/login` — JWT
 
-Copiar .env.example para .env e ajustar se necessário:
+Swagger disponível em **`/swagger`**.
 
-VITE_API_URL=http://localhost:5238
+---
 
+## 🏗️ Arquitetura
+- **KitBox.Domain** — modelos/contratos
+- **KitBox.Infrastructure** — persistência (Mongo) + seed
+- **KitBox.Api** — controllers, validação, DI, CORS, Auth, Swagger
+- **Frontend** — Next.js + Tailwind
 
-📌 Observações
-Projeto em andamento, mas já com MVP funcional.
+**Decisões técnicas:**
+- **MongoDB**: rápido e flexível para prototipagem
+- **Seed automático**: catálogo inicial para não depender de inserts manuais
+- **FluentValidation**: validações centralizadas e claras
+- **Swagger**: documentação viva da API
+- **Next.js**: performance e DX
 
-Estrutura pronta para expansão futura (ex: autenticação, testes automatizados).
+---
 
-Feedbacks são bem-vindos 🚀
+## 🛠️ Troubleshooting
+- Porta **27017** em uso → parar instância antiga ou containers duplicados
+- **npm ERESOLVE** → `.npmrc` com `legacy-peer-deps=true`
+- **CORS**: liberado para `http://localhost:3000`
 
-git clone https://github.com/ViniciusVivet/KitBox.git
-cd KitBox
+---
+
+## 🙋 Sobre mim
+Sou **Douglas Vinicius Alves da Silva**, 25 anos, da Zona Leste de São Paulo.  
+Estou em **transição de carreira para tecnologia**, e este projeto foi construído para demonstrar minha dedicação, capacidade de aprendizado rápido e compromisso em entregar resultados mesmo sob prazos desafiadores.
+
+> Obrigado pela oportunidade de mostrar meu trabalho.  
+> Caso tivesse mais dias, evoluiria em: testes unitários, CI/CD e deploy em cloud.
