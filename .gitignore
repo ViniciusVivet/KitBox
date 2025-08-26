@@ -31,3 +31,22 @@ frontend/dist/
 
 # VS Code
 .vscode/
+# Backend .NET
+/backend/**/bin/
+/backend/**/obj/
+/backend/**/*.user
+/backend/**/*.suo
+# Frontend Next.js
+/frontend/node_modules/
+/frontend/.next/
+/frontend/.turbo/
+/frontend/dist/
+/frontend/.vercel/
+# Logs e caches
+**/*.log
+/.vs/
+/.vscode/
+*.DS_Store
+# NPM
+/frontend/package-lock.json
+/frontend/.npmrc
