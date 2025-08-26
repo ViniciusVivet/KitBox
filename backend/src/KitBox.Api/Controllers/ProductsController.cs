@@ -18,39 +18,33 @@ public class ProductsController : ControllerBase
         _validator = validator;
     }
 
+    // GET /products?name=&category=&page=1&pageSize=12&sortBy=name&sortDir=asc
     [HttpGet]
     public async Task<IActionResult> Search(
         [FromQuery] string? name,
         [FromQuery] string? category,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] int pageSize = 12,
         [FromQuery] string? sortBy = "name",
         [FromQuery] string? sortDir = "asc",
         CancellationToken ct = default)
     {
-        if (page <= 0) page = 1;
-        if (pageSize <= 0) pageSize = 10;
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 12;
 
         sortBy = (sortBy ?? "name").ToLowerInvariant();
         sortDir = (sortDir ?? "asc").ToLowerInvariant();
-
-        var allowedBy = new HashSet<string> { "name", "category", "price", "quantity", "createdatutc" };
-        if (!allowedBy.Contains(sortBy)) sortBy = "name";
+        var allowed = new HashSet<string> { "name", "category", "price", "quantity", "createdatutc" };
+        if (!allowed.Contains(sortBy)) sortBy = "name";
         if (sortDir != "asc" && sortDir != "desc") sortDir = "asc";
 
         var skip = (page - 1) * pageSize;
 
-        var (itemsTask, totalTask) = (
-            _repo.SearchAsync(name, category, skip, pageSize, sortBy, sortDir, ct),
-            _repo.CountAsync(name, category, ct)
-        );
-
+        var itemsTask = _repo.SearchAsync(name, category, skip, pageSize, sortBy, sortDir, ct);
+        var totalTask = _repo.CountAsync(name, category, ct);
         await Task.WhenAll(itemsTask, totalTask);
 
-        var items = itemsTask.Result;
-        var total = totalTask.Result;
-
-        return Ok(new { total, page, pageSize, items });
+        return Ok(new { total = totalTask.Result, page, pageSize, items = itemsTask.Result });
     }
 
     [HttpGet("{id}")]
@@ -63,11 +57,10 @@ public class ProductsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ProductInputDto dto, CancellationToken ct = default)
     {
-        var result = await _validator.ValidateAsync(dto, ct);
-        if (!result.IsValid)
-            return BadRequest(result.Errors);
+        var vr = await _validator.ValidateAsync(dto, ct);
+        if (!vr.IsValid) return BadRequest(vr.Errors);
 
-        var product = new Product
+        var entity = new Product
         {
             Name = dto.Name,
             Description = dto.Description,
@@ -76,18 +69,17 @@ public class ProductsController : ControllerBase
             Quantity = dto.Quantity
         };
 
-        product = await _repo.CreateAsync(product, ct);
-        return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+        entity = await _repo.CreateAsync(entity, ct);
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, entity);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] ProductInputDto dto, CancellationToken ct = default)
     {
-        var result = await _validator.ValidateAsync(dto, ct);
-        if (!result.IsValid)
-            return BadRequest(result.Errors);
+        var vr = await _validator.ValidateAsync(dto, ct);
+        if (!vr.IsValid) return BadRequest(vr.Errors);
 
-        var product = new Product
+        var updated = new Product
         {
             Id = id,
             Name = dto.Name,
@@ -97,7 +89,7 @@ public class ProductsController : ControllerBase
             Quantity = dto.Quantity
         };
 
-        var ok = await _repo.UpdateAsync(product, ct);
+        var ok = await _repo.UpdateAsync(updated, ct);
         return ok ? NoContent() : NotFound();
     }
 

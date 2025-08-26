@@ -6,90 +6,71 @@ namespace KitBox.Infrastructure;
 
 public class MongoProductRepository : IProductRepository
 {
-    private readonly IMongoCollection<Product> _collection;
+    private readonly IMongoCollection<Product> _col;
 
     public MongoProductRepository(IMongoDatabase db)
     {
-        _collection = db.GetCollection<Product>("products");
+        _col = db.GetCollection<Product>("products");
+        var nameIdx = new CreateIndexModel<Product>(
+            Builders<Product>.IndexKeys.Ascending(x => x.Name),
+            new CreateIndexOptions { Background = true });
+        _col.Indexes.CreateOne(nameIdx);
+    }
 
-        try
-        {
-            var models = new List<CreateIndexModel<Product>>
-            {
-                new(Builders<Product>.IndexKeys.Ascending(p => p.Name)),
-                new(Builders<Product>.IndexKeys.Ascending(p => p.Category)),
-                new(Builders<Product>.IndexKeys.Ascending(p => p.CreatedAtUtc))
-            };
-            _collection.Indexes.CreateMany(models);
-        }
-        catch { }
+    public async Task<IReadOnlyList<Product>> SearchAsync(string? name, string? category, int skip, int take, string sortBy, string sortDir, CancellationToken ct = default)
+    {
+        var filter = BuildFilter(name, category);
+        var sort = BuildSort(sortBy, sortDir);
+
+        if (skip < 0) skip = 0;
+        if (take <= 0) take = 10;
+
+        var items = await _col.Find(filter)
+            .Sort(sort)
+            .Skip(skip)
+            .Limit(take)
+            .ToListAsync(ct);
+
+        return items;
+    }
+
+    public async Task<long> CountAsync(string? name, string? category, CancellationToken ct = default)
+    {
+        var filter = BuildFilter(name, category);
+        return await _col.CountDocumentsAsync(filter, cancellationToken: ct);
     }
 
     public async Task<Product?> GetByIdAsync(string id, CancellationToken ct = default)
+        => await _col.Find(x => x.Id == id).FirstOrDefaultAsync(ct);
+
+    public async Task<Product> CreateAsync(Product p, CancellationToken ct = default)
     {
-        var filter = Builders<Product>.Filter.Eq(p => p.Id, id);
-        return await _collection.Find(filter).FirstOrDefaultAsync(ct);
+        if (string.IsNullOrWhiteSpace(p.Id))
+            p.Id = ObjectId.GenerateNewId().ToString();
+        if (p.CreatedAtUtc == default)
+            p.CreatedAtUtc = DateTime.UtcNow;
+
+        await _col.InsertOneAsync(p, cancellationToken: ct);
+        return p;
     }
 
-    public async Task<IReadOnlyList<Product>> SearchAsync(
-        string? name = null,
-        string? category = null,
-        int skip = 0,
-        int take = 20,
-        string sortBy = "name",
-        string sortDir = "asc",
-        CancellationToken ct = default)
+    public async Task<bool> UpdateAsync(Product p, CancellationToken ct = default)
     {
-        var filter = BuildFilter(name, category);
+        var set = Builders<Product>.Update
+            .Set(x => x.Name,        p.Name)
+            .Set(x => x.Description, p.Description)
+            .Set(x => x.Category,    p.Category)
+            .Set(x => x.Price,       p.Price)
+            .Set(x => x.Quantity,    p.Quantity);
 
-        var find = _collection.Find(filter);
-
-        // normaliza
-        sortBy = (sortBy ?? "name").ToLowerInvariant();
-        sortDir = (sortDir ?? "asc").ToLowerInvariant();
-        var desc = sortDir == "desc";
-
-        // aplica ordenação
-        find = sortBy switch
-        {
-            "category"     => desc ? find.SortByDescending(p => p.Category)     : find.SortBy(p => p.Category),
-            "price"        => desc ? find.SortByDescending(p => p.Price)        : find.SortBy(p => p.Price),
-            "quantity"     => desc ? find.SortByDescending(p => p.Quantity)     : find.SortBy(p => p.Quantity),
-            "createdatutc" => desc ? find.SortByDescending(p => p.CreatedAtUtc) : find.SortBy(p => p.CreatedAtUtc),
-            _              => desc ? find.SortByDescending(p => p.Name)         : find.SortBy(p => p.Name),
-        };
-
-        return await find.Skip(skip).Limit(take).ToListAsync(ct);
-    }
-
-    public async Task<long> CountAsync(string? name = null, string? category = null, CancellationToken ct = default)
-    {
-        var filter = BuildFilter(name, category);
-        return await _collection.CountDocumentsAsync(filter, cancellationToken: ct);
-    }
-
-    public async Task<Product> CreateAsync(Product product, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(product.Id))
-            product.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
-
-        product.CreatedAtUtc = DateTime.UtcNow;
-        await _collection.InsertOneAsync(product, cancellationToken: ct);
-        return product;
-    }
-
-    public async Task<bool> UpdateAsync(Product product, CancellationToken ct = default)
-    {
-        var filter = Builders<Product>.Filter.Eq(p => p.Id, product.Id);
-        var result = await _collection.ReplaceOneAsync(filter, product, cancellationToken: ct);
-        return result.IsAcknowledged && result.ModifiedCount > 0;
+        var res = await _col.UpdateOneAsync(x => x.Id == p.Id, set, cancellationToken: ct);
+        return res.ModifiedCount > 0;
     }
 
     public async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {
-        var filter = Builders<Product>.Filter.Eq(p => p.Id, id);
-        var result = await _collection.DeleteOneAsync(filter, ct);
-        return result.IsAcknowledged && result.DeletedCount > 0;
+        var res = await _col.DeleteOneAsync(x => x.Id == id, ct);
+        return res.DeletedCount > 0;
     }
 
     private static FilterDefinition<Product> BuildFilter(string? name, string? category)
@@ -97,11 +78,36 @@ public class MongoProductRepository : IProductRepository
         var filter = Builders<Product>.Filter.Empty;
 
         if (!string.IsNullOrWhiteSpace(name))
-            filter &= Builders<Product>.Filter.Regex(p => p.Name, new BsonRegularExpression(name, "i"));
+        {
+            var rx = new BsonRegularExpression(name, "i");
+            filter &= Builders<Product>.Filter.Or(
+                Builders<Product>.Filter.Regex("Name", rx),
+                Builders<Product>.Filter.Regex("Description", rx)
+            );
+        }
 
         if (!string.IsNullOrWhiteSpace(category))
-            filter &= Builders<Product>.Filter.Eq(p => p.Category, category);
+        {
+            var rx = new BsonRegularExpression(category, "i");
+            filter &= Builders<Product>.Filter.Regex("Category", rx);
+        }
 
         return filter;
+    }
+
+    private static SortDefinition<Product> BuildSort(string? sortBy, string? sortDir)
+    {
+        var desc = string.Equals(sortDir, "desc", StringComparison.OrdinalIgnoreCase);
+        var sort = Builders<Product>.Sort;
+
+        return (sortBy ?? "name").ToLowerInvariant() switch
+        {
+            "name"         => desc ? sort.Descending(x => x.Name)         : sort.Ascending(x => x.Name),
+            "category"     => desc ? sort.Descending(x => x.Category)     : sort.Ascending(x => x.Category),
+            "price"        => desc ? sort.Descending(x => x.Price)        : sort.Ascending(x => x.Price),
+            "quantity"     => desc ? sort.Descending(x => x.Quantity)     : sort.Ascending(x => x.Quantity),
+            "createdatutc" => desc ? sort.Descending(x => x.CreatedAtUtc) : sort.Ascending(x => x.CreatedAtUtc),
+            _              => desc ? sort.Descending(x => x.Name)         : sort.Ascending(x => x.Name),
+        };
     }
 }
