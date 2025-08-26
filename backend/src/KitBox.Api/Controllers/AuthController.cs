@@ -1,0 +1,97 @@
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using KitBox.Domain;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+
+namespace KitBox.Api.Controllers;
+
+[ApiController]
+[Route("auth")]
+public class AuthController : ControllerBase
+{
+    private readonly IUserRepository _users;
+    private readonly IConfiguration _cfg;
+
+    public AuthController(IUserRepository users, IConfiguration cfg)
+    {
+        _users = users;
+        _cfg = cfg;
+    }
+
+    public record RegisterDto(string Email, string Password, string? Name);
+    public record LoginDto(string Email, string Password);
+
+    [AllowAnonymous]
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            return BadRequest(new { message = "Email e senha são obrigatórios." });
+
+        var email = dto.Email.Trim().ToLower();
+        var exists = await _users.GetByEmailAsync(email);
+        if (exists is not null)
+            return Conflict(new { message = "Email já cadastrado." });
+
+        var user = new User
+        {
+            Email = email,
+            // BCrypt padrão
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+            Name = dto.Name?.Trim()
+        };
+
+        await _users.CreateAsync(user);
+
+        return Created("", new { email = user.Email, name = user.Name });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+            return BadRequest(new { message = "Email e senha são obrigatórios." });
+
+        var email = dto.Email.Trim().ToLower();
+        var user = await _users.GetByEmailAsync(email);
+        if (user is null) return Unauthorized(new { message = "Credenciais inválidas." });
+
+        var ok = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
+        if (!ok) return Unauthorized(new { message = "Credenciais inválidas." });
+
+        var token = GenerateJwt(user);
+        return Ok(new { token, email = user.Email, name = user.Name });
+    }
+
+    private string GenerateJwt(User user)
+    {
+        var key = _cfg["Jwt:Key"] ?? "dev-secret-change-me-please";
+        var issuer = _cfg["Jwt:Issuer"] ?? "kitbox-api";
+        var audience = _cfg["Jwt:Audience"] ?? "kitbox-ui";
+
+        var claims = new[]
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+        };
+
+        var creds = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(12),
+            signingCredentials: creds
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}

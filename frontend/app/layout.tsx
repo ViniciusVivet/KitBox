@@ -1,7 +1,9 @@
 ﻿import React from "react"
 import { CartProvider } from "../components/cart/CartContext"
 import CartButton from "../components/cart/CartButton"
-import CartDrawer from "../components/cart/CartDrawer" // <<< import direto (client component)
+// IMPORTAÇÃO DIRETA (client component pode ser usado aqui)
+import CartDrawer from "../components/cart/CartDrawer"
+import AuthClient from "../components/auth/AuthClient"
 
 export const metadata = {
   title: "KitBox",
@@ -33,29 +35,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <strong>KitBox</strong>
               </a>
 
-              <nav style={{display:"flex", gap:10}}>
-                <a href="/" style={linkStyle}>Home</a>
-                <a href="/login" style={linkStyle}>Entrar</a>
-                <a href="/signup" style={linkStyle}>Cadastrar</a>
-              </nav>
-
+              <AuthClient />
               <CartButton />
             </div>
           </header>
 
           {children}
+          {/* Render fixo, mas fechado por padrão; abre ao clicar no botão */}
           <CartDrawer />
         </CartProvider>
       </body>
     </html>
   );
-}
-
-const linkStyle: React.CSSProperties = {
-  padding:"8px 12px",
-  borderRadius:10,
-  border:"1px solid rgba(255,255,255,.08)",
-  color:"#e2e8f0",
-  textDecoration:"none",
-  background:"rgba(15,23,42,.4)"
 }

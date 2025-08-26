@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "f5KkLQxgs9Y=",
+  "dgSpecHash": "ehKc52PVNYg=",
   "success": true,
   "projectFilePath": "C:\\Users\\dougl\\Documents\\KitBox\\backend\\src\\KitBox.Infrastructure\\KitBox.Infrastructure.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\dougl\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\dougl\\.nuget\\packages\\dnsclient\\1.6.1\\dnsclient.1.6.1.nupkg.sha512",
     "C:\\Users\\dougl\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\9.0.8\\microsoft.extensions.configuration.abstractions.9.0.8.nupkg.sha512",
     "C:\\Users\\dougl\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.8\\microsoft.extensions.dependencyinjection.abstractions.9.0.8.nupkg.sha512",

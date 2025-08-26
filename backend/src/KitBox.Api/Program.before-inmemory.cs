@@ -79,7 +79,7 @@ builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<KitBox.Api.Validators.ProductInputValidator>();
 
 // Ajuste o segundo tipo se o nome da implementação for diferente:
-builder.Services.AddScoped<IProductRepository, InMemoryProductRepository>();
+builder.Services.AddScoped<IProductRepository, MongoProductRepository>();
 var app = builder.Build();
 
 // ==== Middleware de log de exceções (diagnóstico de 500)
@@ -108,7 +108,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
 
 
 

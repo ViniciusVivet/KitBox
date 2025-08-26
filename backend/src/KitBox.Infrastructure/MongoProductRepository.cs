@@ -6,102 +6,64 @@ namespace KitBox.Infrastructure;
 
 public class MongoProductRepository : IProductRepository
 {
-    private readonly IMongoCollection<Product> _collection;
+    private readonly IMongoCollection<Product> _col;
 
     public MongoProductRepository(IMongoDatabase db)
     {
-        _collection = db.GetCollection<Product>("products");
-
-        try
-        {
-            var models = new List<CreateIndexModel<Product>>
-            {
-                new(Builders<Product>.IndexKeys.Ascending(p => p.Name)),
-                new(Builders<Product>.IndexKeys.Ascending(p => p.Category)),
-                new(Builders<Product>.IndexKeys.Ascending(p => p.CreatedAtUtc))
-            };
-            _collection.Indexes.CreateMany(models);
-        }
-        catch { }
+        _col = db.GetCollection<Product>("products");
+        // Índice básico por nome (opcional)
+        var nameIdx = new CreateIndexModel<Product>(
+            Builders<Product>.IndexKeys.Ascending(x => x.Name),
+            new CreateIndexOptions { Background = true });
+        _col.Indexes.CreateOne(nameIdx);
     }
 
-    public async Task<Product?> GetByIdAsync(string id, CancellationToken ct = default)
+    public async Task<PagedResult<Product>> GetPagedAsync(int page, int pageSize)
     {
-        var filter = Builders<Product>.Filter.Eq(p => p.Id, id);
-        return await _collection.Find(filter).FirstOrDefaultAsync(ct);
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
+
+        var total = await _col.CountDocumentsAsync(FilterDefinition<Product>.Empty);
+        var items = await _col.Find(FilterDefinition<Product>.Empty)
+            .SortByDescending(x => x.Id) // se Id não for ordenável, troque por Name
+            .Skip((page - 1) * pageSize)
+            .Limit(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<Product>(items, total, page, pageSize);
     }
 
-    public async Task<IReadOnlyList<Product>> SearchAsync(
-        string? name = null,
-        string? category = null,
-        int skip = 0,
-        int take = 20,
-        string sortBy = "name",
-        string sortDir = "asc",
-        CancellationToken ct = default)
+    public async Task<Product?> GetByIdAsync(string id)
     {
-        var filter = BuildFilter(name, category);
-
-        var find = _collection.Find(filter);
-
-        // normaliza
-        sortBy = (sortBy ?? "name").ToLowerInvariant();
-        sortDir = (sortDir ?? "asc").ToLowerInvariant();
-        var desc = sortDir == "desc";
-
-        // aplica ordenação
-        find = sortBy switch
-        {
-            "category"     => desc ? find.SortByDescending(p => p.Category)     : find.SortBy(p => p.Category),
-            "price"        => desc ? find.SortByDescending(p => p.Price)        : find.SortBy(p => p.Price),
-            "quantity"     => desc ? find.SortByDescending(p => p.Quantity)     : find.SortBy(p => p.Quantity),
-            "createdatutc" => desc ? find.SortByDescending(p => p.CreatedAtUtc) : find.SortBy(p => p.CreatedAtUtc),
-            _              => desc ? find.SortByDescending(p => p.Name)         : find.SortBy(p => p.Name),
-        };
-
-        return await find.Skip(skip).Limit(take).ToListAsync(ct);
+        return await _col.Find(x => x.Id == id).FirstOrDefaultAsync();
     }
 
-    public async Task<long> CountAsync(string? name = null, string? category = null, CancellationToken ct = default)
+    public async Task<Product> CreateAsync(Product p)
     {
-        var filter = BuildFilter(name, category);
-        return await _collection.CountDocumentsAsync(filter, cancellationToken: ct);
+        // Gera Id se vier vazio
+        if (string.IsNullOrWhiteSpace(p.Id))
+            p.Id = ObjectId.GenerateNewId().ToString();
+
+        await _col.InsertOneAsync(p);
+        return p;
     }
 
-    public async Task<Product> CreateAsync(Product product, CancellationToken ct = default)
+    public async Task<bool> UpdateAsync(string id, Product update)
     {
-        if (string.IsNullOrWhiteSpace(product.Id))
-            product.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+        // Atualização idempotente (ajuste os campos conforme seu Product)
+        var set = Builders<Product>.Update
+            .Set(x => x.Name, update.Name)
+            .Set(x => x.Description, update.Description)
+            .Set(x => x.Price, update.Price)
+            .Set(x => x.Stock, update.Stock);
 
-        product.CreatedAtUtc = DateTime.UtcNow;
-        await _collection.InsertOneAsync(product, cancellationToken: ct);
-        return product;
+        var res = await _col.UpdateOneAsync(x => x.Id == id, set);
+        return res.ModifiedCount > 0;
     }
 
-    public async Task<bool> UpdateAsync(Product product, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(string id)
     {
-        var filter = Builders<Product>.Filter.Eq(p => p.Id, product.Id);
-        var result = await _collection.ReplaceOneAsync(filter, product, cancellationToken: ct);
-        return result.IsAcknowledged && result.ModifiedCount > 0;
-    }
-
-    public async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
-    {
-        var filter = Builders<Product>.Filter.Eq(p => p.Id, id);
-        var result = await _collection.DeleteOneAsync(filter, ct);
-        return result.IsAcknowledged && result.DeletedCount > 0;
-    }
-
-    private static FilterDefinition<Product> BuildFilter(string? name, string? category)
-    {
-        var filter = Builders<Product>.Filter.Empty;
-
-        if (!string.IsNullOrWhiteSpace(name))
-            filter &= Builders<Product>.Filter.Regex(p => p.Name, new BsonRegularExpression(name, "i"));
-
-        if (!string.IsNullOrWhiteSpace(category))
-            filter &= Builders<Product>.Filter.Eq(p => p.Category, category);
-
-        return filter;
+        var res = await _col.DeleteOneAsync(x => x.Id == id);
+        return res.DeletedCount > 0;
     }
 }
