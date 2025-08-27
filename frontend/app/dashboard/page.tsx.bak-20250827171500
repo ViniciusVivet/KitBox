@@ -1,0 +1,144 @@
+"use client";
+
+import React from "react";
+
+export default function DashboardPage() {
+  // Placeholders de exemplo — depois trocamos por dados reais da API
+  const categorias = [
+    { nome: "Aros",       qtd: 12 },
+    { nome: "Colares",    qtd: 24 },
+    { nome: "Pulseiras",  qtd: 18 },
+    { nome: "Brincos",    qtd: 9  },
+    { nome: "Anéis",      qtd: 22 },
+    { nome: "Diversos",   qtd: 7  },
+  ];
+  const totalCat = categorias.reduce((acc, c) => acc + c.qtd, 0);
+  const baixoEstoque = [
+    { n: "Colar Dourado",  c: "Colares",   q: 3, p: "R$ 150" },
+    { n: "Pulseira Prata", c: "Pulseiras", q: 4, p: "R$ 120" },
+    { n: "Argola Média",   c: "Brincos",   q: 5, p: "R$ 90"  },
+    { n: "Anel Fino",      c: "Anéis",     q: 6, p: "R$ 80"  },
+    { n: "Argola Grande",  c: "Brincos",   q: 7, p: "R$ 110" },
+  ];
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+      {/* Cabeçalho centralizado */}
+      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-10">
+        <div className="mx-auto max-w-5xl px-6 py-5 text-center">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-wide">📊 Estoque de Vendas</h1>
+          <p className="mt-1 text-slate-400 text-sm">Painel gerencial</p>
+        </div>
+      </header>
+
+      {/* Cards de resumo — centralizados no container */}
+      <section className="mx-auto max-w-5xl px-6 py-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <article className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg text-center">
+            <h2 className="text-sm font-semibold text-slate-300">Produtos em estoque</h2>
+            <p className="mt-2 text-3xl md:text-4xl font-extrabold text-emerald-400">128</p>
+            <p className="mt-1 text-xs text-slate-400">Atualizado há 2h</p>
+          </article>
+
+          <article className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg text-center">
+            <h2 className="text-sm font-semibold text-slate-300">Vendas do mês</h2>
+            <p className="mt-2 text-3xl md:text-4xl font-extrabold text-sky-400">R$ 12.430</p>
+            <p className="mt-1 text-xs text-slate-400">+18% vs mês anterior</p>
+          </article>
+
+          <article className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg text-center">
+            <h2 className="text-sm font-semibold text-slate-300">Itens esgotados</h2>
+            <p className="mt-2 text-3xl md:text-4xl font-extrabold text-rose-400">5</p>
+            <p className="mt-1 text-xs text-slate-400">Repor com urgência</p>
+          </article>
+        </div>
+      </section>
+
+      {/* Produtos por categoria — TABELA centralizada */}
+      <section className="mx-auto max-w-5xl px-6">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <h2 className="text-xl font-semibold text-center mb-5">Produtos por categoria</h2>
+
+          <div className="overflow-x-auto rounded-lg border border-slate-800">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-800/70 text-slate-300">
+                <tr>
+                  <th className="px-4 py-3 text-left">Categoria</th>
+                  <th className="px-4 py-3 text-right">Qtd</th>
+                  <th className="px-4 py-3 text-left">Participação</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {categorias.map((c) => {
+                  const pct = totalCat ? Math.round((c.qtd / totalCat) * 100) : 0;
+                  return (
+                    <tr key={c.nome} className="hover:bg-slate-800/40">
+                      <td className="px-4 py-3">{c.nome}</td>
+                      <td className="px-4 py-3 text-right font-medium">{c.qtd}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-2 w-48 rounded bg-slate-800 overflow-hidden">
+                            <div
+                              className="h-2 bg-sky-500/80"
+                              style={{ width: `${pct}%` }}
+                              title={`${pct}%`}
+                            />
+                          </div>
+                          <span className="text-slate-300 text-xs">{pct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot className="bg-slate-800/40 text-slate-300">
+                <tr>
+                  <td className="px-4 py-3 font-semibold">Total</td>
+                  <td className="px-4 py-3 text-right font-semibold">{totalCat}</td>
+                  <td className="px-4 py-3 text-slate-400 text-xs">100%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-center text-slate-400">* Dados de exemplo (placeholder). Integraremos com a API.</p>
+        </div>
+      </section>
+
+      {/* Baixo estoque — centralizado */}
+      <section className="mx-auto max-w-5xl px-6 py-8">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <h2 className="text-xl font-semibold text-center mb-5">Baixo estoque (top 10)</h2>
+
+          <div className="overflow-x-auto rounded-lg border border-slate-800">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-800/70 text-slate-300">
+                <tr>
+                  <th className="px-4 py-3 text-left">Produto</th>
+                  <th className="px-4 py-3 text-left">Categoria</th>
+                  <th className="px-4 py-3 text-right">Qtd</th>
+                  <th className="px-4 py-3 text-right">Preço</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {baixoEstoque.map((r, i) => (
+                  <tr key={i} className="hover:bg-slate-800/40">
+                    <td className="px-4 py-3">{r.n}</td>
+                    <td className="px-4 py-3">{r.c}</td>
+                    <td className="px-4 py-3 text-right">{r.q}</td>
+                    <td className="px-4 py-3 text-right">{r.p}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-3 text-xs text-center text-slate-400">* Lista de exemplo. Vamos puxar da API /products com filtro de quantidade.</p>
+        </div>
+      </section>
+
+      <footer className="mx-auto max-w-5xl px-6 py-10 text-center text-xs text-slate-400">
+        KitBox • Dashboard • v0.2
+      </footer>
+    </main>
+  );
+}

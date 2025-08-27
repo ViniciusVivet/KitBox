@@ -1,0 +1,95 @@
+"use client";
+
+import React from "react";
+
+export default function DashboardPage() {
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100">
+      {/* Cabeçalho do Dashboard */}
+      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-10">
+        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-wide">📊 Estoque de Vendas</h1>
+          <span className="text-slate-400 text-xs md:text-sm">Painel gerencial</span>
+        </div>
+      </header>
+
+      {/* Cards de resumo */}
+      <section className="mx-auto max-w-6xl px-6 py-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <article className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <h2 className="text-sm font-semibold text-slate-300">Produtos em estoque</h2>
+          <p className="mt-2 text-3xl md:text-4xl font-extrabold text-emerald-400">128</p>
+          <p className="mt-1 text-xs text-slate-400">Atualizado há 2h</p>
+        </article>
+
+        <article className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <h2 className="text-sm font-semibold text-slate-300">Vendas do mês</h2>
+          <p className="mt-2 text-3xl md:text-4xl font-extrabold text-sky-400">R$ 12.430</p>
+          <p className="mt-1 text-xs text-slate-400">+18% vs mês anterior</p>
+        </article>
+
+        <article className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <h2 className="text-sm font-semibold text-slate-300">Itens esgotados</h2>
+          <p className="mt-2 text-3xl md:text-4xl font-extrabold text-rose-400">5</p>
+          <p className="mt-1 text-xs text-slate-400">Repor com urgência</p>
+        </article>
+      </section>
+
+      {/* “Produtos por categoria” (placeholder visual compacto) */}
+      <section className="mx-auto max-w-6xl px-6">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <h2 className="text-lg font-semibold mb-4">Produtos por categoria</h2>
+          <div className="h-56 md:h-64 w-full grid grid-cols-6 gap-3 items-end">
+            {["Aros", "Colares", "Pulseiras", "Brincos", "Anéis", "Diversos"].map((cat, i) => (
+              <div key={cat} className="flex flex-col items-center justify-end">
+                <div
+                  className="w-full rounded-md bg-sky-500/70 hover:bg-sky-400/80 transition-all"
+                  style={{ height: `${60 + i * 30}px` }}
+                  title={cat}
+                />
+                <span className="mt-2 text-xs text-slate-300">{cat}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Baixo estoque (top 10) */}
+      <section className="mx-auto max-w-6xl px-6 py-8">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 shadow-lg">
+          <h2 className="text-lg font-semibold mb-4">Baixo estoque (top 10)</h2>
+          <div className="overflow-x-auto rounded-lg border border-slate-800">
+            <table className="min-w-full text-sm">
+              <thead className="bg-slate-800/70 text-slate-300">
+                <tr>
+                  <th className="px-4 py-3 text-left">Produto</th>
+                  <th className="px-4 py-3 text-left">Categoria</th>
+                  <th className="px-4 py-3 text-right">Qtd</th>
+                  <th className="px-4 py-3 text-right">Preço</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {[
+                  { n: "Colar Dourado", c: "Colares", q: 3, p: "R$ 150" },
+                  { n: "Pulseira Prata", c: "Pulseiras", q: 4, p: "R$ 120" },
+                  { n: "Argola Média", c: "Brincos", q: 5, p: "R$ 90" },
+                ].map((r, i) => (
+                  <tr key={i} className="hover:bg-slate-800/40">
+                    <td className="px-4 py-3">{r.n}</td>
+                    <td className="px-4 py-3">{r.c}</td>
+                    <td className="px-4 py-3 text-right">{r.q}</td>
+                    <td className="px-4 py-3 text-right">{r.p}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-slate-400">* Dados de exemplo (placeholder). Integraremos com a API.</p>
+        </div>
+      </section>
+
+      <footer className="mx-auto max-w-6xl px-6 py-10 text-center text-xs text-slate-400">
+        KitBox • Dashboard • v0.1
+      </footer>
+    </main>
+  );
+}

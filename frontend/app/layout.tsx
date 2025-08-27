@@ -1,13 +1,14 @@
-﻿import React from "react"
+import React from "react"
+import Link from "next/link";
 import { CartProvider } from "../components/cart/CartContext"
 import CartButton from "../components/cart/CartButton"
-// IMPORTAÇÃO DIRETA (client component pode ser usado aqui)
+// IMPORTAÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢O DIRETA (client component pode ser usado aqui)
 import CartDrawer from "../components/cart/CartDrawer"
 import AuthClient from "../components/auth/AuthClient"
 
 export const metadata = {
   title: "KitBox",
-  description: "Catálogo de produtos",
+  description: "CatÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡logo de produtos",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -19,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         color: "#e2e8f0",
         fontFamily: "Inter, system-ui, Arial, sans-serif"
       }}>
-        <CartProvider>
+<CartProvider>
           <header style={{
             position:"sticky", top:0, zIndex:20,
             background:"rgba(2,6,23,.7)", backdropFilter:"saturate(180%) blur(8px)",
@@ -36,15 +37,40 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </a>
 
               <AuthClient />
-              <CartButton />
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+  <CartButton />
+  <Link
+    href="/dashboard"
+    title="Visão gerencial de estoque"
+    aria-label="Abrir dashboard"
+    style={{
+      position:"relative",
+      padding:"10px 14px",
+      borderRadius:"12px",
+      border:"1px solid rgba(255,255,255,.09)",
+      background:"rgba(15,23,42,.5)",
+      color:"#e2e8f0",
+      cursor:"pointer",
+      textDecoration:"none",
+      display:"inline-flex",
+      alignItems:"center",
+      gap:"8px",
+      marginLeft:"8px"
+    }}
+  >
+    <span role="img" aria-hidden="true">📊</span>
+    <span>Estoque de vendas</span>
+  </Link>
+</div>
             </div>
           </header>
 
           {children}
-          {/* Render fixo, mas fechado por padrão; abre ao clicar no botão */}
+          {/* Render fixo, mas fechado por padrÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o; abre ao clicar no botÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£o */}
           <CartDrawer />
         </CartProvider>
       </body>
     </html>
   );
 }
+

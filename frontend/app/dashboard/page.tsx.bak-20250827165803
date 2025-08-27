@@ -1,0 +1,94 @@
+﻿import CategoryChart from "@/components/dashboard/CategoryChart";
+
+export const dynamic = "force-dynamic";
+
+type Overview = {
+  totalProducts: number;
+  totalStockValue: number;
+  lowStockCount: number;
+};
+
+type CategoryStat = { category: string; count: number; stockValue: number };
+type Product = { id: string; name: string; category: string; price: number; quantity: number };
+
+async function fetchJson<T>(url: string): Promise<T> {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`Falha ao buscar ${url}`);
+  return res.json();
+}
+
+export default async function DashboardPage() {
+  const base = process.env.NEXT_PUBLIC_API_URL!;
+  const [overview, byCat, lowStock] = await Promise.all([
+    fetchJson<Overview>(`${base}/metrics/overview`),
+    fetchJson<CategoryStat[]>(`${base}/metrics/by-category`),
+    fetchJson<Product[]>(`${base}/metrics/low-stock?threshold=10&take=10`),
+  ]);
+
+  const currency = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      {/* Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-lg border p-4">
+          <div className="text-sm text-gray-500">Total de produtos</div>
+          <div className="text-3xl font-semibold">{overview.totalProducts}</div>
+        </div>
+
+        <div className="rounded-lg border p-4">
+          <div className="text-sm text-gray-500">Valor total do estoque</div>
+          <div className="text-3xl font-semibold">{currency(overview.totalStockValue)}</div>
+        </div>
+
+        <div className="rounded-lg border p-4">
+          <div className="text-sm text-gray-500">Itens com estoque &lt; 10</div>
+          <div className="text-3xl font-semibold">{overview.lowStockCount}</div>
+        </div>
+      </div>
+
+      {/* Gráfico por categoria */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Produtos por categoria</h2>
+        <CategoryChart data={byCat} />
+      </section>
+
+      {/* Tabela baixo estoque */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Baixo estoque (top 10)</h2>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm border rounded-lg">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left p-2 border-b">Produto</th>
+                <th className="text-left p-2 border-b">Categoria</th>
+                <th className="text-right p-2 border-b">Preço</th>
+                <th className="text-right p-2 border-b">Qtd</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lowStock.map((p) => (
+                <tr key={p.id} className="odd:bg-white even:bg-gray-50">
+                  <td className="p-2 border-b">{p.name}</td>
+                  <td className="p-2 border-b">{p.category}</td>
+                  <td className="p-2 border-b text-right">{currency(p.price)}</td>
+                  <td className="p-2 border-b text-right">{p.quantity}</td>
+                </tr>
+              ))}
+              {lowStock.length === 0 && (
+                <tr>
+                  <td className="p-2 border-b text-gray-500" colSpan={4}>
+                    Sem itens de baixo estoque 🎉
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
