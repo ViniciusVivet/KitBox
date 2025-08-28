@@ -1,4 +1,4 @@
-﻿name: kitbox
+name: kitbox
 
 services:
   mongo:

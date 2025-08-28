@@ -81,8 +81,8 @@ builder.Services
 {
     ValidateIssuer = true,
     ValidateAudience = true,
-    ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "kitbox-api",
-    ValidAudience = builder.Configuration["Jwt:Audience"] ?? "kitbox-ui",
+    ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? ""kitbox-api"",
+    ValidAudience = builder.Configuration["Jwt:Audience"] ?? ""kitbox-ui"",
     ValidateIssuerSigningKey = true,
     IssuerSigningKey = new SymmetricSecurityKey(
         Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "dev-super-secret-key-please-change")
@@ -127,7 +127,6 @@ app.MapControllers();
 app.MapGlobalErrorEndpoint();
 
 app.Run();
-
 
 
 

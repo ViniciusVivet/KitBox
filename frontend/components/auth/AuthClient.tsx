@@ -1,44 +1,36 @@
-﻿"use client"
+"use client";
+import React from "react";
+import { keycloak, initKeycloak } from "@/lib/keycloak";
 
-import Link from "next/link"
-import { useEffect, useState } from "react"
-import { auth, type AuthInfo } from "../../lib/auth"
-
-export default function AuthClient(){
-  const [info, setInfo] = useState<AuthInfo | null>(null)
-
-  useEffect(() => { setInfo(auth.get()) }, [])
-
-  function logout(){
-    auth.clear()
-    setInfo(null)
-    // força refresh do header
-    if (typeof window !== "undefined") window.location.href = "/"
+export function RequireAuth({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = React.useState(false);
+  React.useEffect(() => { initKeycloak().then(() => setReady(true)); }, []);
+  if (!ready) return null;
+  if (!keycloak.authenticated) {
+    keycloak.login();
+    return null;
   }
-
-  if (!info) {
-    return (
-      <nav style={{display:"flex", gap:10}}>
-        <a href="/login" style={linkStyle}>Entrar</a>
-        <a href="/signup" style={{...linkStyle, background:"linear-gradient(90deg,#6366f1,#22d3ee)", border:"none", color:"#0b1020", fontWeight:700}}>Cadastrar</a>
-      </nav>
-    )
-  }
-
-  return (
-    <div style={{display:"flex", alignItems:"center", gap:10}}>
-      <span style={{opacity:.85}}>Olá, <strong>{info.name || info.email}</strong></span>
-      <button onClick={logout} style={linkStyle}>Sair</button>
-    </div>
-  )
+  return <>{children}</>;
 }
 
-const linkStyle: React.CSSProperties = {
-  padding:"8px 12px",
-  borderRadius:10,
-  border:"1px solid rgba(255,255,255,.08)",
-  color:"#e2e8f0",
-  textDecoration:"none",
-  background:"rgba(15,23,42,.4)",
-  cursor:"pointer"
+export function LoginButton() {
+  return <button onClick={() => keycloak.login()}>Login</button>;
+}
+
+export function LogoutButton() {
+  return <button onClick={() => keycloak.logout({ redirectUri: window.location.origin })}>Logout</button>;
+}
+
+export function useAuthHeader() {
+  const [token, setToken] = React.useState<string | undefined>(undefined);
+  React.useEffect(() => {
+    initKeycloak().then(() => {
+      setToken(keycloak.token);
+      keycloak.onTokenExpired = async () => {
+        await keycloak.updateToken(30);
+        setToken(keycloak.token);
+      };
+    });
+  }, []);
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }

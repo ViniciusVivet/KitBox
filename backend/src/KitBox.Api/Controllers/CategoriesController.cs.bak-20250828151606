@@ -55,4 +55,3 @@ public sealed class CategoriesController(IMediator mediator) : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 }
-

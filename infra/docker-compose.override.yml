@@ -1,0 +1,22 @@
+﻿services:
+  nginx:
+    depends_on:
+      - api
+      - web
+      - keycloak
+    networks:
+      - default
+
+  api:
+    networks:
+      - default
+  web:
+    networks:
+      - default
+  keycloak:
+    networks:
+      - default
+
+networks:
+  default:
+    name: kitbox_default

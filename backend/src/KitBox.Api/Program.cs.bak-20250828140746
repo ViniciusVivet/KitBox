@@ -74,18 +74,18 @@ builder.Services
     {
         // Authority apontando para o Keycloak do compose
         var authority = builder.Configuration["Jwt:Authority"] ?? "http://localhost/auth/realms/kitbox";
-//        options.Authority = authority;
-//        options.RequireHttpsMetadata = false;
+        options.Authority = authority;
+        options.RequireHttpsMetadata = false;
 
         options.TokenValidationParameters = new TokenValidationParameters
 {
     ValidateIssuer = true,
     ValidateAudience = true,
-    ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "kitbox-api",
-    ValidAudience = builder.Configuration["Jwt:Audience"] ?? "kitbox-ui",
+    ValidIssuer = builder.Configuration[""Jwt:Issuer""] ?? ""kitbox-api"",
+    ValidAudience = builder.Configuration[""Jwt:Audience""] ?? ""kitbox-ui"",
     ValidateIssuerSigningKey = true,
     IssuerSigningKey = new SymmetricSecurityKey(
-        Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "dev-super-secret-key-please-change")
+        Encoding.UTF8.GetBytes(builder.Configuration[""Jwt:Key""] ?? ""dev-super-secret-key-please-change"")
     ),
     ClockSkew = TimeSpan.FromMinutes(2)
 };
@@ -127,9 +127,6 @@ app.MapControllers();
 app.MapGlobalErrorEndpoint();
 
 app.Run();
-
-
-
 
 
 

@@ -1,0 +1,128 @@
+﻿name: kitbox
+services:
+  api:
+    command:
+      - dotnet
+      - run
+      - --project
+      - backend/src/KitBox.Api/KitBox.Api.csproj
+    depends_on:
+      keycloak:
+        condition: service_started
+        required: true
+      mongo:
+        condition: service_started
+        required: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:5238
+      ConnectionStrings__Mongo: mongodb://mongo:27017
+      Jwt__Audience: kitbox-api
+      Jwt__Authority: http://keycloak:8080/auth/realms/kitbox
+      Mongo__Database: kitbox
+    expose:
+      - "5238"
+    image: mcr.microsoft.com/dotnet/sdk:9.0
+    networks:
+      default: null
+    volumes:
+      - type: bind
+        source: C:\Users\dougl\Documents\KitBox
+        target: /src
+        bind:
+          create_host_path: true
+    working_dir: /src
+  keycloak:
+    command:
+      - start-dev
+      - --import-realm
+    depends_on:
+      mongo:
+        condition: service_started
+        required: true
+    environment:
+      KC_HTTP_RELATIVE_PATH: /auth
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    image: quay.io/keycloak/keycloak:24.0.5
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\dougl\Documents\KitBox\infra\keycloak\realm-export
+        target: /opt/keycloak/data/import
+        bind:
+          create_host_path: true
+  mongo:
+    image: mongo:6
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: mongo_data
+        target: /data/db
+        volume: {}
+  nginx:
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+      web:
+        condition: service_started
+        required: true
+    image: nginx:1.25
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "80"
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: C:\Users\dougl\Documents\KitBox\infra\nginx\default.conf
+        target: /etc/nginx/conf.d/default.conf
+        read_only: true
+        bind:
+          create_host_path: true
+  web:
+    command:
+      - bash
+      - -lc
+      - npm install && npm run dev -- -p 3000
+    depends_on:
+      api:
+        condition: service_started
+        required: true
+      keycloak:
+        condition: service_started
+        required: true
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost/api
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: kitbox-web
+      NEXT_PUBLIC_KEYCLOAK_REALM: kitbox
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost/auth
+    expose:
+      - "3000"
+    image: node:20
+    networks:
+      default: null
+    volumes:
+      - type: bind
+        source: C:\Users\dougl\Documents\KitBox\frontend
+        target: /app
+        bind:
+          create_host_path: true
+    working_dir: /app
+networks:
+  default:
+    name: kitbox_default
+volumes:
+  mongo_data:
+    name: kitbox_mongo_data

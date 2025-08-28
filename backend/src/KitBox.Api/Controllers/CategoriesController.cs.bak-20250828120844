@@ -1,4 +1,4 @@
-﻿using KitBox.Application.Features.Categories;
+using KitBox.Application.Features.Categories;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +10,6 @@ namespace KitBox.Api.Controllers;
 [Authorize]
 public sealed class CategoriesController(IMediator mediator) : ControllerBase
 {
-    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] string? name,
@@ -24,7 +23,6 @@ public sealed class CategoriesController(IMediator mediator) : ControllerBase
         return Ok(result);
     }
 
-    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(string id, CancellationToken ct = default)
     {
@@ -55,4 +53,3 @@ public sealed class CategoriesController(IMediator mediator) : ControllerBase
         return ok ? NoContent() : NotFound();
     }
 }
-
