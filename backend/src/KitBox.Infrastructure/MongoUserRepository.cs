@@ -1,36 +1,41 @@
+﻿using System.Threading.Tasks;
 using KitBox.Domain;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
-namespace KitBox.Infrastructure;
-
-public class MongoUserRepository : IUserRepository
+namespace KitBox.Infrastructure
 {
-    private readonly IMongoCollection<User> _collection;
-
-    public MongoUserRepository(IMongoDatabase db)
+    public class MongoUserRepository : IUserRepository
     {
-        _collection = db.GetCollection<User>("users");
+        private readonly IMongoCollection<User> _users;
 
-        // Índice único em Email
-        var emailIndex = new CreateIndexModel<User>(
-            Builders<User>.IndexKeys.Ascending(u => u.Email),
-            new CreateIndexOptions { Unique = true });
-        _collection.Indexes.CreateOne(emailIndex);
-    }
+        public MongoUserRepository(IMongoDatabase db)
+        {
+            _users = db.GetCollection<User>("users");
+        }
 
-    public async Task<User?> GetByEmailAsync(string email)
-        => await _collection.Find(u => u.Email == email).FirstOrDefaultAsync();
+        public async Task<User?> FindByEmailAsync(string email)
+        {
+            return await _users.Find(x => x.Email == email).FirstOrDefaultAsync();
+        }
 
-    public async Task<User?> GetByIdAsync(string id)
-        => await _collection.Find(u => u.Id == id).FirstOrDefaultAsync();
+        public async Task CreateAsync(User user)
+        {
+            await _users.InsertOneAsync(user);
+        }
 
-    public async Task<User> CreateAsync(User user)
-    {
-        if (string.IsNullOrWhiteSpace(user.Id))
-            user.Id = ObjectId.GenerateNewId().ToString();
+        public async Task EnsureUniqueEmailIndexAsync()
+        {
+            var keys = Builders<User>.IndexKeys.Ascending(u => u.Email);
+            var opts = new CreateIndexOptions { Unique = true, Name = "uq_users_email" };
+            await _users.Indexes.CreateOneAsync(new CreateIndexModel<User>(keys, opts));
+        }
 
-        await _collection.InsertOneAsync(user);
-        return user;
+        public async Task UpdatePasswordAndRoleAsync(string email, string passwordHash, string role)
+        {
+            var update = Builders<User>.Update
+                .Set(u => u.PasswordHash, passwordHash)
+                .Set(u => u.Role, role);
+            await _users.UpdateOneAsync(u => u.Email == email, update);
+        }
     }
 }

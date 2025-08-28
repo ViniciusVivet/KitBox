@@ -1,115 +1,64 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using KitBox.Api.Services;
 using KitBox.Domain;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
-namespace KitBox.Api.Controllers;
-
-[ApiController]
-[Route("auth")]
-public class AuthController : ControllerBase
+namespace KitBox.Api.Controllers
 {
-    private readonly IUserRepository _users;
-    private readonly IConfiguration _cfg;
-
-    public AuthController(IUserRepository users, IConfiguration cfg)
+    [ApiController]
+    [Route("/auth")]
+    public class AuthController : ControllerBase
     {
-        _users = users;
-        _cfg = cfg;
-    }
+        private readonly IUserRepository _users;
+        private readonly IPasswordHasher _hasher;
+        private readonly IConfiguration _config;
 
-    public record RegisterDto(string Email, string Password, string? Name);
-    public record LoginDto(string Email, string Password);
-
-    [AllowAnonymous]
-    [HttpPost("register")]
-    public async Task<IActionResult> Register([FromBody] RegisterDto dto)
-    {
-        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = "Email e senha sÃ£o obrigatÃ³rios." });
-
-        var email = dto.Email.Trim().ToLower();
-        var exists = await _users.GetByEmailAsync(email);
-        if (exists is not null)
-            return Conflict(new { message = "Email jÃ¡ cadastrado." });
-
-        var user = new User
+        public AuthController(IUserRepository users, IPasswordHasher hasher, IConfiguration config)
         {
-            Email = email,
-            // BCrypt padrÃ£o
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Name = dto.Name?.Trim()
-        };
+            _users = users;
+            _hasher = hasher;
+            _config = config;
+        }
 
-        await _users.CreateAsync(user);
-
-            try
-    {
-        await _users.CreateAsync(user);
-    }
-    catch (MongoDB.Driver.MongoWriteException mwx) when (mwx.WriteError?.Code == 11000)
-    {
-        return Conflict(new { message = "Email jÃ¡ cadastrado." });
-    }
-
-        try
-    {
-        await _users.CreateAsync(user);
-    }
-    catch (MongoDB.Driver.MongoWriteException mwx) when (mwx.WriteError?.Code == 11000)
-    {
-        return Conflict(new { message = "Email já cadastrado." });
-    }
-
-    return Created("", new { email = user.Email, name = user.Name });
-}
-
-    [AllowAnonymous]
-    [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginDto dto)
-    {
-        if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = "Email e senha sÃ£o obrigatÃ³rios." });
-
-        var email = dto.Email.Trim().ToLower();
-        var user = await _users.GetByEmailAsync(email);
-        if (user is null) return Unauthorized(new { message = "Credenciais invÃ¡lidas." });
-
-        var ok = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
-        if (!ok) return Unauthorized(new { message = "Credenciais invÃ¡lidas." });
-
-        var token = GenerateJwt(user);
-        return Ok(new { token, email = user.Email, name = user.Name });
-    }
-
-    private string GenerateJwt(User user)
-    {
-        var key = _cfg["Jwt:Key"] ?? "dev-secret-change-me-please";
-        var issuer = _cfg["Jwt:Issuer"] ?? "kitbox-api";
-        var audience = _cfg["Jwt:Audience"] ?? "kitbox-ui";
-
-        var claims = new[]
+        public class LoginInput
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        };
+            public string Email { get; set; } = string.Empty;
+            public string Password { get; set; } = string.Empty;
+        }
 
-        var creds = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-            SecurityAlgorithms.HmacSha256);
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginInput input)
+        {
+            var user = await _users.FindByEmailAsync(input.Email);
+            if (user is null)
+                return Unauthorized(new { message = "Credenciais inválidas." });
 
-        var token = new JwtSecurityToken(
-            issuer: issuer,
-            audience: audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(12),
-            signingCredentials: creds
-        );
+            if (!_hasher.Verify(input.Password, user.PasswordHash))
+                return Unauthorized(new { message = "Credenciais inválidas." });
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+                new Claim(ClaimTypes.Role, user.Role ?? "User"),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "dev-super-secret-key-please-change"));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"] ?? "kitbox-api",
+                audience: _config["Jwt:Audience"] ?? "kitbox-ui",
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(4),
+                signingCredentials: creds
+            );
+
+            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+            return Ok(new { token = jwt });
+        }
     }
 }

@@ -1,7 +1,12 @@
-﻿namespace KitBox.Domain;
+﻿using System.Threading.Tasks;
 
-public interface IUserRepository
+namespace KitBox.Domain
 {
-    Task<User?> GetByEmailAsync(string email);
-    Task<User> CreateAsync(User user);
+    public interface IUserRepository
+    {
+        Task<User?> FindByEmailAsync(string email);
+        Task CreateAsync(User user);
+        Task EnsureUniqueEmailIndexAsync();
+        Task UpdatePasswordAndRoleAsync(string email, string passwordHash, string role);
+    }
 }
