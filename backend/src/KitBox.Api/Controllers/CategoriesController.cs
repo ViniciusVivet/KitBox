@@ -1,0 +1,55 @@
+using KitBox.Application.Features.Categories;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace KitBox.Api.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+[Authorize]
+public sealed class CategoriesController(IMediator mediator) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> List(
+        [FromQuery] string? name,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? sortBy = "createdAtUtc",
+        [FromQuery] string? sortDir = "desc",
+        CancellationToken ct = default)
+    {
+        var result = await mediator.Send(new ListCategoriesQuery(name, page, pageSize, sortBy, sortDir), ct);
+        return Ok(result);
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetById(string id, CancellationToken ct = default)
+    {
+        var category = await mediator.Send(new GetCategoryByIdQuery(id), ct);
+        return category is null ? NotFound() : Ok(category);
+    }
+
+    public sealed record CategoryDto(string Name, string? Description);
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CategoryDto dto, CancellationToken ct = default)
+    {
+        var created = await mediator.Send(new CreateCategoryCommand(dto.Name, dto.Description), ct);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(string id, [FromBody] CategoryDto dto, CancellationToken ct = default)
+    {
+        var ok = await mediator.Send(new UpdateCategoryCommand(id, dto.Name, dto.Description), ct);
+        return ok ? NoContent() : NotFound();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(string id, CancellationToken ct = default)
+    {
+        var ok = await mediator.Send(new DeleteCategoryCommand(id), ct);
+        return ok ? NoContent() : NotFound();
+    }
+}

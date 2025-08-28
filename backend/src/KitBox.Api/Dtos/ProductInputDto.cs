@@ -1,10 +1,9 @@
-﻿namespace KitBox.Api.Dtos;
+namespace KitBox.Api.Dtos;
 
-public class ProductInputDto
-{
-    public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Category { get; set; } = string.Empty;
-    public decimal Price { get; set; }
-    public int Quantity { get; set; }
-}
+public sealed record ProductInputDto(
+    string Name,
+    string? Description,
+    string Category,
+    decimal Price,
+    int Quantity
+);

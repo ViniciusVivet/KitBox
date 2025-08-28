@@ -141,10 +141,10 @@ public class MongoProductRepository : IProductRepository
             filter &= Builders<Product>.Filter.Lte(nameof(Product.Price), maxPrice.Value);
         }
 
-        var total = await _col.CountDocumentsAsync(filter, cancellationToken: ct);
+        var total = await _collection.CountDocumentsAsync(filter, cancellationToken: ct);
 
         var sortBy = Builders<Product>.Sort.Descending(nameof(Product.CreatedAtUtc));
-        var items = await _col.Find(filter)
+        var items = await _collection.Find(filter)
             .Sort(sortBy)
             .Skip((page - 1) * pageSize)
             .Limit(pageSize)

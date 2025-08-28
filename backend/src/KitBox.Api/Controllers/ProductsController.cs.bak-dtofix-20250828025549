@@ -1,4 +1,3 @@
-using KitBox.Api.Dtos;
 using KitBox.Application.Features.Products;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -17,8 +16,17 @@ public sealed class ProductsController(IMediator mediator) : ControllerBase
         var product = await mediator.Send(new GetProductByIdQuery(id), ct);
         return product is null ? NotFound() : Ok(product);
     }
-[HttpPost]
-    public async Task<IActionResult> Create([FromBody] ProductInputDto dto, CancellationToken ct = default)
+
+    public sealed record ProductDto(
+        string Name,
+        string? Description,
+        string Category,
+        decimal Price,
+        int Quantity
+    );
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] ProductDto dto, CancellationToken ct = default)
     {
         var created = await mediator.Send(
             new CreateProductCommand(dto.Name, dto.Description, dto.Category, dto.Price, dto.Quantity), ct);
@@ -27,7 +35,7 @@ public sealed class ProductsController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(string id, [FromBody] ProductInputDto dto, CancellationToken ct = default)
+    public async Task<IActionResult> Update(string id, [FromBody] ProductDto dto, CancellationToken ct = default)
     {
         var ok = await mediator.Send(
             new UpdateProductCommand(id, dto.Name, dto.Description, dto.Category, dto.Price, dto.Quantity), ct);

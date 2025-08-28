@@ -2,7 +2,6 @@
 
 public class User
 {
-    // O Mongo C# Driver mapeia "Id" -> "_id" por convenção (sem precisar de atributos)
     public string Id { get; set; } = default!;
     public string Email { get; set; } = default!;
     public string PasswordHash { get; set; } = default!;

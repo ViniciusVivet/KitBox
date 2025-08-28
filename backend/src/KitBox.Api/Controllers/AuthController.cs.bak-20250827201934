@@ -30,17 +30,17 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = "Email e senha sÃ£o obrigatÃ³rios." });
+            return BadRequest(new { message = "Email e senha são obrigatórios." });
 
         var email = dto.Email.Trim().ToLower();
         var exists = await _users.GetByEmailAsync(email);
         if (exists is not null)
-            return Conflict(new { message = "Email jÃ¡ cadastrado." });
+            return Conflict(new { message = "Email já cadastrado." });
 
         var user = new User
         {
             Email = email,
-            // BCrypt padrÃ£o
+            // BCrypt padrão
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Name = dto.Name?.Trim()
         };
@@ -48,15 +48,6 @@ public class AuthController : ControllerBase
         await _users.CreateAsync(user);
 
             try
-    {
-        await _users.CreateAsync(user);
-    }
-    catch (MongoDB.Driver.MongoWriteException mwx) when (mwx.WriteError?.Code == 11000)
-    {
-        return Conflict(new { message = "Email jÃ¡ cadastrado." });
-    }
-
-        try
     {
         await _users.CreateAsync(user);
     }
@@ -73,14 +64,14 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
-            return BadRequest(new { message = "Email e senha sÃ£o obrigatÃ³rios." });
+            return BadRequest(new { message = "Email e senha são obrigatórios." });
 
         var email = dto.Email.Trim().ToLower();
         var user = await _users.GetByEmailAsync(email);
-        if (user is null) return Unauthorized(new { message = "Credenciais invÃ¡lidas." });
+        if (user is null) return Unauthorized(new { message = "Credenciais inválidas." });
 
         var ok = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
-        if (!ok) return Unauthorized(new { message = "Credenciais invÃ¡lidas." });
+        if (!ok) return Unauthorized(new { message = "Credenciais inválidas." });
 
         var token = GenerateJwt(user);
         return Ok(new { token, email = user.Email, name = user.Name });

@@ -110,46 +110,4 @@ public class MongoProductRepository : IProductRepository
             _              => desc ? sort.Descending(x => x.Name)         : sort.Ascending(x => x.Name),
         };
     }
-    public async Task<(IReadOnlyList<Product> Items, long Total)> SearchAsync(
-        string? name,
-        string? category,
-        decimal? minPrice,
-        decimal? maxPrice,
-        int page,
-        int pageSize,
-        CancellationToken ct = default)
-    {
-        var filter = Builders<Product>.Filter.Empty;
-
-        if (!string.IsNullOrWhiteSpace(name))
-        {
-            var rx = new BsonRegularExpression(name, "i");
-            filter &= Builders<Product>.Filter.Regex(nameof(Product.Name), rx);
-        }
-
-        if (!string.IsNullOrWhiteSpace(category))
-        {
-            filter &= Builders<Product>.Filter.Eq(nameof(Product.Category), category);
-        }
-
-        if (minPrice.HasValue)
-        {
-            filter &= Builders<Product>.Filter.Gte(nameof(Product.Price), minPrice.Value);
-        }
-        if (maxPrice.HasValue)
-        {
-            filter &= Builders<Product>.Filter.Lte(nameof(Product.Price), maxPrice.Value);
-        }
-
-        var total = await _col.CountDocumentsAsync(filter, cancellationToken: ct);
-
-        var sortBy = Builders<Product>.Sort.Descending(nameof(Product.CreatedAtUtc));
-        var items = await _col.Find(filter)
-            .Sort(sortBy)
-            .Skip((page - 1) * pageSize)
-            .Limit(pageSize)
-            .ToListAsync(ct);
-
-        return (items, total);
-    }
 }
